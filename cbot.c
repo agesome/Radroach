@@ -219,22 +219,21 @@ main(void)
       l = strtok(inbuf, "\n");
       while(l)
 	{
-	  if( !p_response(l) )
-	    if( (cmsg = parsemsg(l)) != NULL )
-	      if( (ccmd = parsecmd(cmsg->msg)) != NULL)
-		{
-		  for (i = 0; acts[i].name != NULL; ++i)
-		    if(strstr(acts[i].name, ccmd->action))
-		      {
-			acts[i].exec(cmsg, ccmd);
-			printf("Command '%s' executed with parameters: '%s'\n", acts[i].name, ccmd->params);
-			goto donecmd;
-		      }
-		  printf("No handler found for this command: '%s' (supplied parameters: '%s')\n", ccmd->action, ccmd->params);
-		}
+	  if( !p_response(l) && (cmsg = parsemsg(l)) != NULL )
+	    if( (ccmd = parsecmd(cmsg->msg)) != NULL)
+	      {
+		for (i = 0; acts[i].name != NULL; ++i)
+		  if(strstr(acts[i].name, ccmd->action))
+		    {
+		      acts[i].exec(cmsg, ccmd);
+		      printf("Command '%s' executed with parameters: '%s'\n", acts[i].name, ccmd->params);
+			free((void *) cmsg);
+			free((void *) ccmd);
+		      goto donecmd;
+		    }
+		printf("No handler found for this command: '%s' (supplied parameters: '%s')\n", ccmd->action, ccmd->params);
+	      }
 	donecmd:
-	  free((void *) cmsg);
-	  free((void *) ccmd);
 	  l = strtok(NULL, "\n");
 	}
     }
