@@ -1,23 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <regex.h>
+#include "cbot.h"
 
 #define BUFSZ 4096
 
 static char inbuf[BUFSZ + 1];
-
-struct message
-{
-  char *sender, *ident, *host, *dest, *msg;
-};
-
-typedef struct message message;
+int sock;
 
 static void
 die(char *why)
@@ -116,10 +102,9 @@ parsemsg (const char *str)
 	      matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so);
       result->dest[matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so] = '\0';
       result->msg =
-	(char *) malloc (matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so + 1);
+	(char *) malloc (matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so);
       memcpy (result->msg, &str[matches[IRC_MESSAGE].rm_so],
 	      matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so);
-      /* there's alro \r in the end, it fscks things up so we cut it */
       result->msg[matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so - 1] = '\0';
     }
   else
@@ -131,13 +116,80 @@ parsemsg (const char *str)
   return result;
 }
 
+char mod = '`';
+
+command *
+parsecmd(char *str)
+{
+  command *result = (command *) malloc (sizeof (command));
+  char msg_regex[] = "^ ([^ ]+) (.*)";
+  enum act {RAW, ACT, PARAM };
+  regex_t *regex = (regex_t *) malloc (sizeof (regex_t));
+  regmatch_t matches[3];
+
+  /* put out trigger char in */
+  msg_regex[1] = mod;
+  regcomp (regex, msg_regex, REG_ICASE | REG_EXTENDED);
+  if( regexec (regex, str, 3, matches, 0) == 0)
+    {
+      result->action = (char *) malloc(matches[ACT].rm_eo - matches[ACT].rm_so + 1);
+      memcpy(result->action, &str[matches[ACT].rm_so], matches[ACT].rm_eo - matches[ACT].rm_so);
+      result->action[matches[ACT].rm_eo - matches[ACT].rm_so] = '\0';
+      
+      result->params = (char *) malloc(matches[PARAM].rm_eo - matches[PARAM].rm_so);
+      memcpy(result->params, &str[matches[PARAM].rm_so], matches[PARAM].rm_eo - matches[PARAM].rm_so);
+      result->params[matches[PARAM].rm_eo - matches[PARAM].rm_so] = '\0';
+    }
+  else
+    {
+      regfree(regex);
+      return NULL;
+    }
+  regfree(regex);
+  return result;
+}
+
+action *say;
+
+void
+f_say(message *msg, command *cmd)
+{
+  char *s;
+  if( strstr(msg->dest, "CBot") != NULL )
+    {
+      s = (char *) malloc(12 + strlen(msg->sender) + strlen(cmd->params));
+      sprintf(s, "PRIVMSG %s :%s\n", msg->sender, cmd->params);
+      raw(sock, s);
+    }
+  else
+    {
+      s = (char *) malloc(12 + strlen(msg->dest) + strlen(cmd->params));
+      sprintf(s, "PRIVMSG %s :%s\n", msg->dest, cmd->params);
+      raw(sock, s);
+    }
+  free((void *)s);
+}
+
+void
+fadd(void)
+{
+/* say */
+say = (action *) malloc(sizeof(action));
+say->name = "say";
+say->desc = "Say something to comamnd source";
+say->help = NULL;
+say->exec = &f_say;
+}
+
 int
 main(void)
 {
-  int sock, setup_done = 0, lastread = 1;
+  int setup_done = 0, lastread = 1;
   char *l;
   message *cmsg;
-  
+  command *ccmd;
+
+  fadd();
   s_connect("irc.cluenet.org", &sock);
   sleep(2);
   raw(sock, "NICK CBot\n");
@@ -165,8 +217,18 @@ main(void)
 	    {
 	      puts(l);
 	      if( (cmsg = parsemsg(l)) != NULL )
-		printf("Sender: '%s', ident: '%s', host: '%s', target: '%s', message: '%s'\n",
-		       cmsg->sender, cmsg->ident, cmsg->host, cmsg->dest, cmsg->msg);
+		{
+		  printf("Sender: '%s', ident: '%s', host: '%s', target: '%s', message: '%s'\n",
+			 cmsg->sender, cmsg->ident, cmsg->host, cmsg->dest, cmsg->msg);
+		  if( (ccmd = parsecmd(cmsg->msg)) != NULL)
+		    {
+		      printf("Command found: '%s', with parameters '%s'\n", ccmd->action, ccmd->params);
+		      if ( strstr(ccmd->action, say->name) != NULL)
+			say->exec(cmsg, ccmd);
+		    }
+		  else
+		    printf("Not a command or parsing failed\n");
+		}
 	    }
 	  l = strtok(NULL, "\n");
 	}
