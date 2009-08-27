@@ -3,7 +3,7 @@
 #define BUFSZ 4096
 
 static char inbuf[BUFSZ + 1];
-int sock;
+static int sock, setup_done = 0;
 
 static void
 die(char *why)
@@ -17,7 +17,6 @@ logstr(char *what)
 {
   puts(what);
 }
-
 
 static void
 s_connect(char *host, int *sock)
@@ -56,7 +55,6 @@ sread(int sock)
   int nread = 0;
   memset(inbuf, 0, BUFSZ);
   nread = (int) read(sock, inbuf, BUFSZ);
-  /* inbuf[nread + 1] = '\0'; */
   return nread;
 }
      
@@ -70,7 +68,7 @@ setup(int sock)
 static message *
 parsemsg (const char *str)
 {
-  message *result = (message *) malloc (sizeof (message));
+  message *result;
   enum irc_parts
   { IRC_RAW, IRC_SENDER, IRC_IDENT, IRC_HOST, IRC_DEST, IRC_MESSAGE };
   /* thanks nathan */
@@ -81,26 +79,32 @@ parsemsg (const char *str)
   regcomp (regex, irc_regex, REG_ICASE | REG_EXTENDED);
   if( regexec (regex, str, 6, matches, 0) == 0)
     {
+      result = (message *) malloc (sizeof (message));
+      
       result->sender =
 	(char *) malloc (matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so + 1);
       memcpy (result->sender, &str[matches[IRC_SENDER].rm_so],
 	      matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so);
       result->sender[matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so] = '\0';
+      
       result->ident =
 	(char *) malloc (matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so + 1);
       memcpy (result->ident, &str[matches[IRC_IDENT].rm_so],
 	      matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so);
       result->ident[matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so] = '\0';
+      
       result->host =
 	(char *) malloc (matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so + 1);
       memcpy (result->host, &str[matches[IRC_HOST].rm_so],
 	      matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so);
       result->host[matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so] = '\0';
+      
       result->dest =
 	(char *) malloc (matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so + 1);
       memcpy (result->dest, &str[matches[IRC_DEST].rm_so],
 	      matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so);
       result->dest[matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so] = '\0';
+      
       result->msg =
 	(char *) malloc (matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so);
       memcpy (result->msg, &str[matches[IRC_MESSAGE].rm_so],
@@ -118,10 +122,10 @@ parsemsg (const char *str)
 
 char mod = '`';
 
-command *
+static command *
 parsecmd(char *str)
 {
-  command *result = (command *) malloc (sizeof (command));
+  command *result;
   char msg_regex[] = "^ ([^ ]+) (.*)";
   enum act {RAW, ACT, PARAM };
   regex_t *regex = (regex_t *) malloc (sizeof (regex_t));
@@ -129,9 +133,12 @@ parsecmd(char *str)
 
   /* put out trigger char in */
   msg_regex[1] = mod;
+  
   regcomp (regex, msg_regex, REG_ICASE | REG_EXTENDED);
   if( regexec (regex, str, 3, matches, 0) == 0)
     {
+      result = (command *) malloc (sizeof (command));
+      
       result->action = (char *) malloc(matches[ACT].rm_eo - matches[ACT].rm_so + 1);
       memcpy(result->action, &str[matches[ACT].rm_so], matches[ACT].rm_eo - matches[ACT].rm_so);
       result->action[matches[ACT].rm_eo - matches[ACT].rm_so] = '\0';
@@ -149,9 +156,27 @@ parsecmd(char *str)
   return result;
 }
 
-action *say;
+static int
+p_response(char *l)
+{
+  if(strstr(l, "PING ") != NULL)
+    {
+      puts(l);
+      memcpy(l, "PONG", 4);
+      raw(sock, l);
+      puts(l);
+      if( setup_done == 0)
+	{
+	  sleep(1);
+	  setup(sock);
+	  setup_done = 1;
+	}
+      return 1;
+    }
+  return 0;
+}
 
-void
+static void
 f_say(message *msg, command *cmd)
 {
   char *s;
@@ -170,26 +195,20 @@ f_say(message *msg, command *cmd)
   free((void *)s);
 }
 
-void
-fadd(void)
-{
-/* say */
-say = (action *) malloc(sizeof(action));
-say->name = "say";
-say->desc = "Say something to comamnd source";
-say->help = NULL;
-say->exec = &f_say;
-}
+static action acts[] =
+  {
+    { "say", "Say something to comamnd source", NULL, &f_say },
+    { NULL, NULL, NULL, NULL }	/* so we can detect end of array */
+  };
 
 int
 main(void)
 {
-  int setup_done = 0, lastread = 1;
+  int lastread = 1, i;
   char *l;
   message *cmsg;
   command *ccmd;
 
-  fadd();
   s_connect("irc.cluenet.org", &sock);
   sleep(2);
   raw(sock, "NICK CBot\n");
@@ -200,36 +219,22 @@ main(void)
       l = strtok(inbuf, "\n");
       while(l)
 	{
-	  if(strstr(l, "PING ") != NULL)
-	    {
-	      puts(l);
-	      memcpy(l, "PONG", 4);
-	      raw(sock, l);
-	      puts(l);
-	      if( setup_done == 0)
+	  if( !p_response(l) )
+	    if( (cmsg = parsemsg(l)) != NULL )
+	      if( (ccmd = parsecmd(cmsg->msg)) != NULL)
 		{
-		  sleep(1);
-		  setup(sock);
-		  setup_done = 1;
+		  for (i = 0; acts[i].name != NULL; ++i)
+		    if(strstr(acts[i].name, ccmd->action))
+		      {
+			acts[i].exec(cmsg, ccmd);
+			printf("Command '%s' executed with parameters: '%s'\n", acts[i].name, ccmd->params);
+			goto donecmd;
+		      }
+		  printf("No handler found for this command: '%s' (supplied parameters: '%s')\n", ccmd->action, ccmd->params);
 		}
-	    }
-	  else
-	    {
-	      puts(l);
-	      if( (cmsg = parsemsg(l)) != NULL )
-		{
-		  printf("Sender: '%s', ident: '%s', host: '%s', target: '%s', message: '%s'\n",
-			 cmsg->sender, cmsg->ident, cmsg->host, cmsg->dest, cmsg->msg);
-		  if( (ccmd = parsecmd(cmsg->msg)) != NULL)
-		    {
-		      printf("Command found: '%s', with parameters '%s'\n", ccmd->action, ccmd->params);
-		      if ( strstr(ccmd->action, say->name) != NULL)
-			say->exec(cmsg, ccmd);
-		    }
-		  else
-		    printf("Not a command or parsing failed\n");
-		}
-	    }
+	donecmd:
+	  free((void *) cmsg);
+	  free((void *) ccmd);
 	  l = strtok(NULL, "\n");
 	}
     }
