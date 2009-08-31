@@ -29,3 +29,11 @@ struct action
 };
 
 typedef struct action action;
+
+struct settings
+{
+  char *nick, *name, *host, *trusted;
+  int password;
+};
+
+typedef struct settings settings;

@@ -6,16 +6,15 @@ static char inbuf[BUFSZ + 1];
 static int sock, setup_done = 0;
 
 static void
-die(char *why)
+err(char *str)
 {
-  puts(why);
-  exit(EXIT_FAILURE);
+  fprintf(stderr, "Error: %s\n", str);
 }
 
 static void
-logstr(char *what)
+logstr(char *str)
 {
-  puts(what);
+  printf("%s", str);
 }
 
 static void
@@ -29,23 +28,37 @@ s_connect(char *host, int *sock)
   hints.ai_flags = 0;
   hints.ai_protocol = 0;
 
-  logstr("Creating socket...");
+  logstr("Creating socket...\n");
   if( (*sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-    die("Socket creation failed.");
-  logstr("Created.\nResolving hostname...");
+    {
+      err("Socket creation failed.");
+      goto err;
+    }
+  logstr("Created.\nResolving hostname...\n");
   if(  getaddrinfo(host, "ircd", &hints, &server) )
-    die("Failed to resolve hostname.");
-  logstr("Resolved.\nConecting...");
+    {
+      err("Failed to resolve hostname.");
+      goto err;
+    }
+      logstr("Resolved.\nConecting...\n");
   if( connect(*sock, server->ai_addr, server->ai_addrlen) == -1)
-    die("Connection to server failed.");
-  logstr("Connected.");
-
+    {
+      err("Connection to server failed.");
+      goto err;
+    }
+  logstr("Connected.\n");
   freeaddrinfo(server);
+  return;
+  
+ err:
+  freeaddrinfo(server);
+  exit(EXIT_FAILURE);
 }
 
 static void
 raw(int sock, char *str)
 {
+  logstr(str);
   write(sock, str, strlen(str));
 }
 
@@ -114,9 +127,11 @@ parsemsg (const char *str)
   else
     {
       regfree(regex);
+      free(regex);
       return NULL;
     }
   regfree(regex);
+  free(regex);
   return result;
 }
 
@@ -143,17 +158,41 @@ parsecmd(char *str)
       memcpy(result->action, &str[matches[ACT].rm_so], matches[ACT].rm_eo - matches[ACT].rm_so);
       result->action[matches[ACT].rm_eo - matches[ACT].rm_so] = '\0';
       
-      result->params = (char *) malloc(matches[PARAM].rm_eo - matches[PARAM].rm_so);
+      result->params = (char *) malloc(matches[PARAM].rm_eo - matches[PARAM].rm_so + 1);
       memcpy(result->params, &str[matches[PARAM].rm_so], matches[PARAM].rm_eo - matches[PARAM].rm_so);
       result->params[matches[PARAM].rm_eo - matches[PARAM].rm_so] = '\0';
     }
   else
     {
       regfree(regex);
+      free(regex);
       return NULL;
     }
   regfree(regex);
+  free(regex);
+  
   return result;
+}
+
+void
+cmdfree(command *cmd)
+{
+  free(cmd->action);
+  free(cmd->params);
+  free(cmd);
+  cmd = NULL;
+}
+
+void
+msgfree(message *msg)
+{
+  free(msg->sender);
+  free(msg->ident);
+  free(msg->host);
+  free(msg->dest);
+  free(msg->msg);  
+  free(msg);
+  msg = NULL;
 }
 
 static int
@@ -164,7 +203,6 @@ p_response(char *l)
       puts(l);
       memcpy(l, "PONG", 4);
       raw(sock, l);
-      puts(l);
       if( setup_done == 0)
 	{
 	  sleep(1);
@@ -192,7 +230,7 @@ f_say(message *msg, command *cmd)
       sprintf(s, "PRIVMSG %s :%s\n", msg->dest, cmd->params);
       raw(sock, s);
     }
-  free((void *)s);
+  free(s);
 }
 
 static action acts[] =
@@ -206,8 +244,8 @@ main(void)
 {
   int lastread = 1, i;
   char *l;
-  message *cmsg;
-  command *ccmd;
+  message *cmsg = NULL;
+  command *ccmd = NULL;
 
   s_connect("irc.cluenet.org", &sock);
   sleep(2);
@@ -220,20 +258,24 @@ main(void)
       while(l)
 	{
 	  if( !p_response(l) && (cmsg = parsemsg(l)) != NULL )
-	    if( (ccmd = parsecmd(cmsg->msg)) != NULL)
-	      {
-		for (i = 0; acts[i].name != NULL; ++i)
-		  if(strstr(acts[i].name, ccmd->action))
-		    {
-		      acts[i].exec(cmsg, ccmd);
-		      printf("Command '%s' executed with parameters: '%s'\n", acts[i].name, ccmd->params);
-			free((void *) cmsg);
-			free((void *) ccmd);
-		      goto donecmd;
-		    }
-		printf("No handler found for this command: '%s' (supplied parameters: '%s')\n", ccmd->action, ccmd->params);
-	      }
-	donecmd:
+	    {
+	      if( (ccmd = parsecmd(cmsg->msg)) != NULL)
+		{
+		  for (i = 0; acts[i].name != NULL; ++i)
+		    if(strstr(acts[i].name, ccmd->action))
+		      {
+			acts[i].exec(cmsg, ccmd);
+			printf("Command '%s' executed with parameters: '%s'\n", acts[i].name, ccmd->params);
+		      }
+		    else if(acts[i + 1].name == NULL)
+		      {
+			printf("No handler found for this command: '%s' (supplied parameters: '%s')\n", ccmd->action, ccmd->params);
+			break;
+		      }
+		  cmdfree(ccmd);
+		}
+	      msgfree(cmsg);
+	    }
 	  l = strtok(NULL, "\n");
 	}
     }
