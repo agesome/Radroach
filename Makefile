@@ -1,6 +1,6 @@
 CC = gcc $(CFLAGS) $(LIBS) $(INCLUDES) $(DEFS)
 CFLAGS = -O0 -g -pipe -pedantic -Wall -Wextra
-LIBS = 
+LIBS = -lconfuse
 INCLUDES = -I.
 FILES =  *.c
 DEFS =

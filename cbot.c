@@ -4,6 +4,7 @@
 
 static char inbuf[BUFSZ + 1];
 static int sock, setup_done = 0;
+static settings *conf = NULL;
 
 static void
 err(char *str)
@@ -74,7 +75,21 @@ sread(int sock)
 static void
 setup(int sock)
 {
-  raw(sock, "USER CBot localhost irc.cluenet.org :CBot - a bot in C, by age\n");
+  char *l;
+  if(conf->name)
+    {
+      l = malloc(strlen("USER  localhost  :\n") + strlen(conf->name) + strlen(conf->nick) + strlen(conf->host));
+      sprintf(l, "USER %s localhost %s :%s\n", conf->nick, conf->host, conf->name);
+      raw(sock, l);
+      free(l);
+    }
+  else
+    {
+      l = malloc(strlen("USER   localhost   :CBot - a bot in C, by age\n") + strlen(conf->nick) + strlen(conf->host));
+      sprintf(l, "USER %s localhost %s :CBot - a bot in C, by age\n", conf->nick, conf->host);
+      raw(sock, l);
+      free(l);
+    }
 }
 
 /* parse a string, return message containing that string's data */
@@ -239,17 +254,87 @@ static action acts[] =
     { NULL, NULL, NULL, NULL }	/* so we can detect end of array */
   };
 
-int
-main(void)
+static void
+p_help(void)
 {
-  int lastread = 1, i;
-  char *l;
+  printf("Usage: [-h] -c confile\n");
+}
+
+static settings *
+configure(char *cfile)
+{
+  cfg_t *cfg = NULL;
+  settings *conf = (settings *) malloc(sizeof(settings));
+  int status;
+
+  cfg_opt_t opts[] = {
+    CFG_SIMPLE_STR("nick", &conf->nick),
+    CFG_SIMPLE_STR("name", &conf->name),
+    CFG_SIMPLE_STR("host", &conf->host),
+    CFG_SIMPLE_STR("trusted", &conf->trusted),
+    CFG_SIMPLE_STR("password", &conf->password),
+    CFG_END()
+  };
+
+  /* default values */
+  conf->nick = NULL;
+  conf->name = NULL;
+  conf->host = NULL;
+  conf->trusted = NULL;
+  conf->password = NULL;
+
+  cfg = cfg_init(opts, 0);
+  status = cfg_parse(cfg, cfile);
+  /* check for necessary settings */
+  if ( status = CFG_SUCCESS && conf->nick != NULL && conf->host != NULL)
+    return conf;
+  return NULL;
+}
+
+int
+main(int argc, char *argv[])
+{
+  int lastread = 1, i, opt;
+  char *l, *cfile = NULL;
   message *cmsg = NULL;
   command *ccmd = NULL;
 
-  s_connect("irc.cluenet.org", &sock);
+  while ((opt = getopt(argc, argv, "hc:")) != -1)
+    {
+      switch(opt)
+	{
+	case 'h':
+	  p_help();
+	  break;
+	case 'c':
+	  cfile = optarg;
+	  break;
+	default:
+	  p_help();
+	  exit(EXIT_FAILURE);
+	}
+    }
+
+  if(cfile == NULL)
+    {
+      fprintf(stderr, "No config file specified.\n");
+      exit(EXIT_FAILURE);
+    }
+  
+  printf("Configuration file selected: %s\n", cfile);
+
+  if( (conf = configure(cfile)) == NULL)
+    {
+      fprintf(stderr, "You did not specify nickname and host or parsing configuration failed :(\n");
+      exit(EXIT_FAILURE);
+    }
+
+  s_connect(conf->host, &sock);
   sleep(2);
-  raw(sock, "NICK CBot\n");
+  /* inbuf is not used yet, so it becomes a temporary buffer */
+  sprintf(inbuf, "NICK %s\n", conf->nick);
+  raw(sock, inbuf);
+  
   while(lastread != 0)
     {
       sleep(1);

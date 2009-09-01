@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <regex.h>
+#include <confuse.h>
 
 struct message
 {
@@ -32,8 +33,7 @@ typedef struct action action;
 
 struct settings
 {
-  char *nick, *name, *host, *trusted;
-  int password;
+  char *nick, *name, *host, *trusted, *password;
 };
 
 typedef struct settings settings;
