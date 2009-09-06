@@ -78,7 +78,7 @@ setup(int sock)
   char *l;
   if(conf->name)
     {
-      l = malloc(strlen("USER  localhost  :\n") + strlen(conf->name) + strlen(conf->nick) + strlen(conf->host));
+      l = malloc(strlen("USER   localhost   :\n") + strlen(conf->name) + strlen(conf->nick) + strlen(conf->host));
       sprintf(l, "USER %s localhost %s :%s\n", conf->nick, conf->host, conf->name);
       raw(sock, l);
       free(l);
@@ -248,9 +248,54 @@ f_say(message *msg, command *cmd)
   free(s);
 }
 
+static void
+f_join(message *msg, command *cmd)
+{
+  char *s;
+  s = (char *) malloc(5 + strlen(cmd->params));
+  sprintf(s, "JOIN %s\n", cmd->params);
+  raw(sock, s);
+  free(s);
+}
+
+static void
+f_part(message *msg, command *cmd)
+{
+  if( strstr(msg->dest, "CBot") == NULL )
+    {
+      char *s;
+      s = (char *) malloc(5 + strlen(msg->dest));
+      sprintf(s, "PART %s\n", msg->dest);
+      raw(sock, s);
+      free(s);
+    }
+}
+
+static void
+f_me(message *msg, command *cmd)
+{
+  char *s;
+  if( strstr(msg->dest, "CBot") != NULL )
+    {
+      s = (char *) malloc(20 + strlen(msg->sender) + strlen(cmd->params));
+      sprintf(s, "PRIVMSG %s :\001ACTION %s\001\n", msg->sender, cmd->params);
+      raw(sock, s);
+    }
+  else
+    {
+      s = (char *) malloc(20 + strlen(msg->dest) + strlen(cmd->params));
+      sprintf(s, "PRIVMSG %s :\001ACTION %s\001\n", msg->dest, cmd->params);
+      raw(sock, s);
+    }
+  free(s);
+}
+  
 static action acts[] =
   {
     { "say", "Say something to comamnd source", NULL, &f_say },
+    { "join", "Join a channel", NULL, &f_join },
+    { "part", "Leave a channel", NULL, &f_part },
+    { "you", "The bot will act like he does something", NULL, &f_me },    
     { NULL, NULL, NULL, NULL }	/* so we can detect end of array */
   };
 
@@ -285,10 +330,57 @@ configure(char *cfile)
 
   cfg = cfg_init(opts, 0);
   status = cfg_parse(cfg, cfile);
+  printf("Trusted users are: %s\n", conf->trusted);
   /* check for necessary settings */
-  if ( status = CFG_SUCCESS && conf->nick != NULL && conf->host != NULL)
+  /* if ( status = CFG_SUCCESS && conf->nick != NULL && conf->host != NULL) */
     return conf;
-  return NULL;
+  /* return NULL; */
+}
+
+static int
+checkrights(message *msg)
+{
+  char *l, *s;
+
+  s = (char *) malloc(1 + strlen(msg->ident) + strlen(msg->host));
+  sprintf(s, "%s@%s", msg->ident, msg->host);
+  for(l = strtok(conf->trusted, " "); l != NULL; l = strtok(NULL, " "))
+    if( strstr(s, l) )
+      {
+	free(s);
+	return 1;
+      }
+  free(s);
+  return 0;
+}
+
+static void
+execute(message *msg, command *cmd)
+{
+  int i;
+  
+  for (i = 0; acts[i].name != NULL; ++i)
+    if(strstr(acts[i].name, cmd->action))
+      {
+	if(checkrights(msg))
+	  {
+	    printf("Accepted command from %s (%s@%s)\n", msg->sender, msg->ident, msg->host);
+	    acts[i].exec(msg, cmd);
+	    printf("Command '%s' executed with parameters: '%s'\n", acts[i].name, cmd->params);
+	    break;
+	  }
+	else
+	  {
+	    printf("%s (%s@%s) is not trusted! (tried to execute: %s)\n", msg->sender, msg->ident, msg->host, acts[i].name);
+	    break;
+	  }
+      }
+    else if(acts[i + 1].name == NULL)
+      {
+	printf("No handler found for this command: '%s' (supplied parameters: '%s')\n", cmd->action, cmd->params);
+	break;
+      }
+  cmdfree(cmd);
 }
 
 int
@@ -298,7 +390,7 @@ main(int argc, char *argv[])
   char *l, *cfile = NULL;
   message *cmsg = NULL;
   command *ccmd = NULL;
-
+  
   while ((opt = getopt(argc, argv, "hc:")) != -1)
     {
       switch(opt)
@@ -330,39 +422,18 @@ main(int argc, char *argv[])
     }
 
   s_connect(conf->host, &sock);
-  sleep(2);
-  /* inbuf is not used yet, so it becomes a temporary buffer */
+  /* inbuf is not used yet, don't scream. */
   sprintf(inbuf, "NICK %s\n", conf->nick);
   raw(sock, inbuf);
   
-  while(lastread != 0)
+  while( (lastread = sread(sock)) != 0 && (l = strtok(inbuf, "\n")) )
     {
-      sleep(1);
-      lastread = sread(sock);
-      l = strtok(inbuf, "\n");
-      while(l)
+      if( !p_response(l) && (cmsg = parsemsg(l)) != NULL && (ccmd = parsecmd(cmsg->msg)) != NULL )
 	{
-	  if( !p_response(l) && (cmsg = parsemsg(l)) != NULL )
-	    {
-	      if( (ccmd = parsecmd(cmsg->msg)) != NULL)
-		{
-		  for (i = 0; acts[i].name != NULL; ++i)
-		    if(strstr(acts[i].name, ccmd->action))
-		      {
-			acts[i].exec(cmsg, ccmd);
-			printf("Command '%s' executed with parameters: '%s'\n", acts[i].name, ccmd->params);
-		      }
-		    else if(acts[i + 1].name == NULL)
-		      {
-			printf("No handler found for this command: '%s' (supplied parameters: '%s')\n", ccmd->action, ccmd->params);
-			break;
-		      }
-		  cmdfree(ccmd);
-		}
-	      msgfree(cmsg);
-	    }
-	  l = strtok(NULL, "\n");
+	  execute(cmsg, ccmd);
+	  msgfree(cmsg);
 	}
+      l = strtok(NULL, "\n");
     }
   return EXIT_SUCCESS;
 }
