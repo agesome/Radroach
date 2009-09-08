@@ -1,69 +1,26 @@
 #include "cbot.h"
+#include "actions.c"
 
-#define BUFSZ 4096
-
-static char inbuf[BUFSZ + 1];
-static int sock, setup_done = 0;
-static settings *conf = NULL;
-
-static void
-err(char *str)
+void
+p_help(void)
 {
-  fprintf(stderr, "Error: %s\n", str);
+  printf("Usage: [-h] -c confile\n");
 }
 
-static void
+void
 logstr(char *str)
 {
-  printf("%s", str);
+  printf("%s: %s", execname, str);
 }
 
-static void
-s_connect(char *host, int *sock)
-{
-  struct addrinfo *server, hints;
-  
-  memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = 0;
-  hints.ai_protocol = 0;
-
-  logstr("Creating socket...\n");
-  if( (*sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-    {
-      err("Socket creation failed.");
-      goto err;
-    }
-  logstr("Created.\nResolving hostname...\n");
-  if(  getaddrinfo(host, "ircd", &hints, &server) )
-    {
-      err("Failed to resolve hostname.");
-      goto err;
-    }
-      logstr("Resolved.\nConecting...\n");
-  if( connect(*sock, server->ai_addr, server->ai_addrlen) == -1)
-    {
-      err("Connection to server failed.");
-      goto err;
-    }
-  logstr("Connected.\n");
-  freeaddrinfo(server);
-  return;
-  
- err:
-  freeaddrinfo(server);
-  exit(EXIT_FAILURE);
-}
-
-static void
+void
 raw(int sock, char *str)
 {
   logstr(str);
   write(sock, str, strlen(str));
 }
 
-static int
+int
 sread(int sock)
 {
   int nread = 0;
@@ -71,29 +28,93 @@ sread(int sock)
   nread = (int) read(sock, inbuf, BUFSZ);
   return nread;
 }
+
+void
+cmdfree(command *cmd)
+{
+  free(cmd->action);
+  free(cmd->params);
+  free(cmd);
+  cmd = NULL;
+}
+
+void
+msgfree(message *msg)
+{
+  free(msg->sender);
+  free(msg->ident);
+  free(msg->host);
+  free(msg->dest);
+  free(msg->msg);  
+  free(msg);
+  msg = NULL;
+}
+
+void
+sconnect(char *host)
+{
+  struct addrinfo *server = NULL, hints;
+  int st;
+  
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = 0;
+  hints.ai_protocol = 0;
+
+  if( (sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+      error(0, 0, "Socket creation failed.\n");
+      goto err;
+    }
+  logstr("Socket created.\n");
+  if( (st = getaddrinfo(host, "ircd", &hints, &server)) != 0 )
+    {
+      error(0, 0, "Failed to resolve hostname: %s", gai_strerror(st));
+      goto err;
+    }
+  logstr("Hostname resolved.\n");
+  if( connect(sock, server->ai_addr, server->ai_addrlen) == -1)
+    {
+      error(0, 0, "Connection to server failed: %s", gai_strerror(errno));
+      goto err;
+    }
+  logstr("Connected.\n");
+  freeaddrinfo(server);
+  
+  /* inbuf is not used yet, don't scream. */
+  sprintf(inbuf, "NICK %s\n", conf->nick);
+  raw(sock, inbuf);
+  
+  return;
+  
+ err:
+  if(server)
+  freeaddrinfo(server);
+  exit(EXIT_FAILURE);
+}
      
-static void
+void
 setup(int sock)
 {
   char *l;
   if(conf->name)
     {
-      l = malloc(strlen("USER   localhost   :\n") + strlen(conf->name) + strlen(conf->nick) + strlen(conf->host));
+      l = malloc(strlen("USER  localhost  :\n") + strlen(conf->name) + strlen(conf->nick) + strlen(conf->host));
       sprintf(l, "USER %s localhost %s :%s\n", conf->nick, conf->host, conf->name);
       raw(sock, l);
-      free(l);
     }
   else
     {
-      l = malloc(strlen("USER   localhost   :CBot - a bot in C, by age\n") + strlen(conf->nick) + strlen(conf->host));
+      l = malloc(strlen("USER  localhost  :CBot - a bot in C, by age\n") + strlen(conf->nick) + strlen(conf->host));
       sprintf(l, "USER %s localhost %s :CBot - a bot in C, by age\n", conf->nick, conf->host);
       raw(sock, l);
-      free(l);
     }
+  free(l);
 }
 
 /* parse a string, return message containing that string's data */
-static message *
+message *
 parsemsg (const char *str)
 {
   message *result;
@@ -152,7 +173,7 @@ parsemsg (const char *str)
 
 char mod = '`';
 
-static command *
+command *
 parsecmd(char *str)
 {
   command *result;
@@ -189,38 +210,16 @@ parsecmd(char *str)
   return result;
 }
 
-void
-cmdfree(command *cmd)
-{
-  free(cmd->action);
-  free(cmd->params);
-  free(cmd);
-  cmd = NULL;
-}
-
-void
-msgfree(message *msg)
-{
-  free(msg->sender);
-  free(msg->ident);
-  free(msg->host);
-  free(msg->dest);
-  free(msg->msg);  
-  free(msg);
-  msg = NULL;
-}
-
-static int
+int
 p_response(char *l)
 {
   if(strstr(l, "PING ") != NULL)
     {
-      puts(l);
       memcpy(l, "PONG", 4);
       raw(sock, l);
+      logstr(l);
       if( setup_done == 0)
 	{
-	  sleep(1);
 	  setup(sock);
 	  setup_done = 1;
 	}
@@ -229,84 +228,8 @@ p_response(char *l)
   return 0;
 }
 
-static void
-f_say(message *msg, command *cmd)
-{
-  char *s;
-  if( strstr(msg->dest, "CBot") != NULL )
-    {
-      s = (char *) malloc(12 + strlen(msg->sender) + strlen(cmd->params));
-      sprintf(s, "PRIVMSG %s :%s\n", msg->sender, cmd->params);
-      raw(sock, s);
-    }
-  else
-    {
-      s = (char *) malloc(12 + strlen(msg->dest) + strlen(cmd->params));
-      sprintf(s, "PRIVMSG %s :%s\n", msg->dest, cmd->params);
-      raw(sock, s);
-    }
-  free(s);
-}
-
-static void
-f_join(message *msg, command *cmd)
-{
-  char *s;
-  s = (char *) malloc(5 + strlen(cmd->params));
-  sprintf(s, "JOIN %s\n", cmd->params);
-  raw(sock, s);
-  free(s);
-}
-
-static void
-f_part(message *msg, command *cmd)
-{
-  if( strstr(msg->dest, "CBot") == NULL )
-    {
-      char *s;
-      s = (char *) malloc(5 + strlen(msg->dest));
-      sprintf(s, "PART %s\n", msg->dest);
-      raw(sock, s);
-      free(s);
-    }
-}
-
-static void
-f_me(message *msg, command *cmd)
-{
-  char *s;
-  if( strstr(msg->dest, "CBot") != NULL )
-    {
-      s = (char *) malloc(20 + strlen(msg->sender) + strlen(cmd->params));
-      sprintf(s, "PRIVMSG %s :\001ACTION %s\001\n", msg->sender, cmd->params);
-      raw(sock, s);
-    }
-  else
-    {
-      s = (char *) malloc(20 + strlen(msg->dest) + strlen(cmd->params));
-      sprintf(s, "PRIVMSG %s :\001ACTION %s\001\n", msg->dest, cmd->params);
-      raw(sock, s);
-    }
-  free(s);
-}
-  
-static action acts[] =
-  {
-    { "say", "Say something to comamnd source", NULL, &f_say },
-    { "join", "Join a channel", NULL, &f_join },
-    { "part", "Leave a channel", NULL, &f_part },
-    { "you", "The bot will act like he does something", NULL, &f_me },    
-    { NULL, NULL, NULL, NULL }	/* so we can detect end of array */
-  };
-
-static void
-p_help(void)
-{
-  printf("Usage: [-h] -c confile\n");
-}
-
-static settings *
-configure(char *cfile)
+settings *
+parsecfg(char *cfile)
 {
   cfg_t *cfg = NULL;
   settings *conf = (settings *) malloc(sizeof(settings));
@@ -330,14 +253,15 @@ configure(char *cfile)
 
   cfg = cfg_init(opts, 0);
   status = cfg_parse(cfg, cfile);
-  printf("Trusted users are: %s\n", conf->trusted);
+  printf("%s: Trusted users are: %s\n", execname, conf->trusted);
+  /* printf("%s %s %s %s\n", conf->nick, conf->name, conf->host, conf->password); */
   /* check for necessary settings */
-  /* if ( status = CFG_SUCCESS && conf->nick != NULL && conf->host != NULL) */
+  if ( status == CFG_SUCCESS && conf->nick != NULL && conf->host != NULL)
     return conf;
-  /* return NULL; */
+  return NULL;
 }
 
-static int
+int
 checkrights(message *msg)
 {
   char *l, *s;
@@ -350,11 +274,11 @@ checkrights(message *msg)
 	free(s);
 	return 1;
       }
-  free(s);
   return 0;
+  free(s);
 }
 
-static void
+void
 execute(message *msg, command *cmd)
 {
   int i;
@@ -364,32 +288,32 @@ execute(message *msg, command *cmd)
       {
 	if(checkrights(msg))
 	  {
-	    printf("Accepted command from %s (%s@%s)\n", msg->sender, msg->ident, msg->host);
+	    printf("%s: Accepted command from %s (%s@%s)\n", execname, msg->sender, msg->ident, msg->host);
 	    acts[i].exec(msg, cmd);
-	    printf("Command '%s' executed with parameters: '%s'\n", acts[i].name, cmd->params);
+	    printf("%s: Command '%s' executed with parameters: '%s'\n", execname, acts[i].name, cmd->params);
 	    break;
 	  }
 	else
 	  {
-	    printf("%s (%s@%s) is not trusted! (tried to execute: %s)\n", msg->sender, msg->ident, msg->host, acts[i].name);
+	    printf("%s: %s (%s@%s) is not trusted! (tried to execute: %s)\n", execname, msg->sender, msg->ident, msg->host, acts[i].name);
 	    break;
 	  }
       }
     else if(acts[i + 1].name == NULL)
       {
-	printf("No handler found for this command: '%s' (supplied parameters: '%s')\n", cmd->action, cmd->params);
+	printf("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n", execname, cmd->action, cmd->params);
 	break;
       }
   cmdfree(cmd);
 }
 
 int
-main(int argc, char *argv[])
+configure(int argc, char *argv[])
 {
-  int lastread = 1, i, opt;
-  char *l, *cfile = NULL;
-  message *cmsg = NULL;
-  command *ccmd = NULL;
+  char *cfile = NULL;
+  int opt;
+  
+  execname = strdup(argv[0]);
   
   while ((opt = getopt(argc, argv, "hc:")) != -1)
     {
@@ -403,28 +327,41 @@ main(int argc, char *argv[])
 	  break;
 	default:
 	  p_help();
-	  exit(EXIT_FAILURE);
+	  return 0; 
 	}
     }
 
   if(cfile == NULL)
     {
-      fprintf(stderr, "No config file specified.\n");
-      exit(EXIT_FAILURE);
+      error(0, 0, "No configuration file specified.");
+      return 0;
     }
   
-  printf("Configuration file selected: %s\n", cfile);
+  printf("%s: Configuration file selected: %s\n", execname, cfile);
 
-  if( (conf = configure(cfile)) == NULL)
+  if( (conf = parsecfg(cfile)) == NULL)
     {
-      fprintf(stderr, "You did not specify nickname and host or parsing configuration failed :(\n");
+      error(0, 0, "You did not specify nickname and host or parsing configuration failed.");
+      return 0;
+    }
+  return 1;
+}  
+
+int
+main(int argc, char *argv[])
+{
+  int lastread = 1;
+  char *l;
+  message *cmsg = NULL;
+  command *ccmd = NULL;
+
+  if( !configure(argc, argv) )
+    {
+      error(0, 0, "Failed to configure.");
       exit(EXIT_FAILURE);
     }
 
-  s_connect(conf->host, &sock);
-  /* inbuf is not used yet, don't scream. */
-  sprintf(inbuf, "NICK %s\n", conf->nick);
-  raw(sock, inbuf);
+  sconnect(conf->host);
   
   while( (lastread = sread(sock)) != 0 && (l = strtok(inbuf, "\n")) )
     {

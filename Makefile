@@ -1,8 +1,9 @@
+LANG="en_US.UTF-8"
 CC = gcc $(CFLAGS) $(LIBS) $(INCLUDES) $(DEFS)
-CFLAGS = -O0 -g -pipe -pedantic -Wall -Wextra
+CFLAGS = -O0 -g -pipe -Wall -Wextra
 LIBS = -lconfuse
 INCLUDES = -I.
-FILES =  *.c
+FILES =  cbot.c
 DEFS =
 
 all: clean cbot

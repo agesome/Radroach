@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+#include <error.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -37,3 +39,36 @@ struct settings
 };
 
 typedef struct settings settings;
+
+#define BUFSZ 4096
+
+static char inbuf[BUFSZ + 1], *execname;
+static int sock, setup_done = 0;
+static settings *conf = NULL;
+
+void
+p_help(void);
+void
+logstr(char *str);
+void
+raw(int sock, char *str);
+int
+sread(int sock);
+void
+sconnect(char *host);
+void
+setup(int sock);
+message *
+parsemsg (const char *str);
+command *
+parsecmd(char *str);
+int
+p_response(char *l);
+settings *
+parsecfg(char *cfile);
+int
+checkrights(message *msg);
+void
+execute(message *msg, command *cmd);
+int
+configure(int argc, char *argv[]);
