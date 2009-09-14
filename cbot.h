@@ -53,7 +53,7 @@ logstr(char *str);
 void
 raw(int sock, char *str);
 int
-sread(int sock);
+sread(int sock, char *buf, int nc);
 void
 sconnect(char *host);
 void

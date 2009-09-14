@@ -1,10 +1,11 @@
 LANG="en_US.UTF-8"
-CC = gcc $(CFLAGS) $(LIBS) $(INCLUDES) $(DEFS)
+CC = gcc $(CFLAGS) $(DEFS) $(LIBS) $(INCLUDES)
 CFLAGS = -O0 -g -pipe -Wall -Wextra
 LIBS = -lconfuse
 INCLUDES = -I.
 FILES =  cbot.c
-DEFS =
+# VER = `git log | head -1 | awk '{print $2}'`
+DEFS = #-D_REV=git log | head -1 | awk '{print $2}'`
 
 all: clean cbot
 

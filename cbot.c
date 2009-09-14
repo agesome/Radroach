@@ -21,13 +21,38 @@ raw(int sock, char *str)
 }
 
 int
-sread(int sock)
+sread(int sock, char *buf, int nc)
 {
   int nread = 0;
   memset(inbuf, 0, BUFSZ);
-  nread = (int) read(sock, inbuf, BUFSZ);
+  nread = (int) read(sock, buf, nc);
+  inbuf[nread - 1] = '\0';
   return nread;
 }
+
+int
+sogetline(int s, char **l)
+{
+  printf("Running sogetline()\n");
+  int i=0;
+  char c = 0;
+
+  if(l != NULL)
+    free(*l);
+  while(read(s, &inbuf[i++], 1) == 1 || c != '\n')
+    if(inbuf[i - 1] == '\n')
+      {
+	inbuf[i - 2] = '\n';
+	inbuf[i - 1] = '\0';
+	*l = (char *) malloc(strlen(inbuf));
+	strcpy(*l, inbuf);
+	memset(inbuf, 0, BUFSZ + 1);
+	printf("Finished sogetline()\n");
+	return 1;
+      }
+  printf("Finished sogetline(), NO RETURN\n");
+}
+      
 
 void
 cmdfree(command *cmd)
@@ -124,41 +149,51 @@ parsemsg (const char *str)
   char irc_regex[] = "^:([^!]+)!([^@]+)@([^ ]+) [A-Z]+ ([^ ]+) :(.*)$";
   regex_t *regex = (regex_t *) malloc (sizeof (regex_t));
   regmatch_t matches[6];
+
+  printf("Begin parsemsg()\n");
   /* regex is tested, so no error checking */
   regcomp (regex, irc_regex, REG_ICASE | REG_EXTENDED);
-  if( regexec (regex, str, 6, matches, 0) == 0)
+  puts("REGIN");
+  regexec (regex, str, 6, matches, 0);
+  puts("REGOUT");
+  if( /* regexec (regex, str, 6, matches, 0) == 0) */1)
     {
+      puts("In");
       result = (message *) malloc (sizeof (message));
-      
+      puts("Wee");
       result->sender =
 	(char *) malloc (matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so + 1);
+      puts("Mallocd");
       memcpy (result->sender, &str[matches[IRC_SENDER].rm_so],
 	      matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so);
+      puts("Copied o_O");
       result->sender[matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so] = '\0';
-      
+      puts("Wee1");
       result->ident =
 	(char *) malloc (matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so + 1);
       memcpy (result->ident, &str[matches[IRC_IDENT].rm_so],
 	      matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so);
       result->ident[matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so] = '\0';
-      
+      puts("Wee2");
       result->host =
 	(char *) malloc (matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so + 1);
       memcpy (result->host, &str[matches[IRC_HOST].rm_so],
 	      matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so);
       result->host[matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so] = '\0';
-      
+      puts("Wee3");
       result->dest =
 	(char *) malloc (matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so + 1);
       memcpy (result->dest, &str[matches[IRC_DEST].rm_so],
 	      matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so);
       result->dest[matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so] = '\0';
-      
+      puts("Wee4");
+
       result->msg =
 	(char *) malloc (matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so);
       memcpy (result->msg, &str[matches[IRC_MESSAGE].rm_so],
 	      matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so);
       result->msg[matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so - 1] = '\0';
+      puts("Out");
     }
   else
     {
@@ -166,6 +201,8 @@ parsemsg (const char *str)
       free(regex);
       return NULL;
     }
+
+  printf("End parsemsg()\n");
   regfree(regex);
   free(regex);
   return result;
@@ -185,6 +222,7 @@ parsecmd(char *str)
   /* put out trigger char in */
   msg_regex[1] = mod;
   
+  printf("Begin parsecmd()\n");
   regcomp (regex, msg_regex, REG_ICASE | REG_EXTENDED);
   if( regexec (regex, str, 3, matches, 0) == 0)
     {
@@ -206,7 +244,7 @@ parsecmd(char *str)
     }
   regfree(regex);
   free(regex);
-  
+  printf("End parsecmd()\n");
   return result;
 }
 
@@ -217,7 +255,6 @@ p_response(char *l)
     {
       memcpy(l, "PONG", 4);
       raw(sock, l);
-      logstr(l);
       if( setup_done == 0)
 	{
 	  setup(sock);
@@ -350,27 +387,36 @@ configure(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-  int lastread = 1;
-  char *l;
+  char *l = NULL;
   message *cmsg = NULL;
   command *ccmd = NULL;
-
+  
   if( !configure(argc, argv) )
     {
       error(0, 0, "Failed to configure.");
       exit(EXIT_FAILURE);
     }
 
+  /* printf("%s: This is CBot, commit %s", execname, "VERSION"); */
+
   sconnect(conf->host);
-  
-  while( (lastread = sread(sock)) != 0 && (l = strtok(inbuf, "\n")) )
+
+  while( sogetline(sock, &l) )
     {
-      if( !p_response(l) && (cmsg = parsemsg(l)) != NULL && (ccmd = parsecmd(cmsg->msg)) != NULL )
+      if (p_response(l))
 	{
+	  printf("%s: Ping done\n", execname);
+	  continue;
+	}
+      printf("%s: %s", execname, l);
+      printf("Begin parsing.\n");
+      if( (cmsg = parsemsg(l)) != NULL && (ccmd = parsecmd(cmsg->msg)) != NULL )
+	{
+	  printf("Parsing done\n");
 	  execute(cmsg, ccmd);
 	  msgfree(cmsg);
 	}
-      l = strtok(NULL, "\n");
+      printf("Looop\n");
     }
   return EXIT_SUCCESS;
 }
