@@ -4,7 +4,7 @@ void
 f_say(message *msg, command *cmd)
 {
   char *s;
-  if( strstr(msg->dest, "CBot") != NULL )
+  if( strstr(msg->dest, conf->nick) != NULL )
     {
       s = (char *) malloc(strlen("PRIVMSG  :\n") + strlen(msg->sender) + strlen(cmd->params));
       sprintf(s, "PRIVMSG %s :%s\n", msg->sender, cmd->params);
@@ -22,6 +22,7 @@ f_say(message *msg, command *cmd)
 void
 f_join(message *msg, command *cmd)
 {
+  msg = NULL;
   char *s;
   s = (char *) malloc(strlen("JOIN \n") + strlen(cmd->params));
   sprintf(s, "JOIN %s\n", cmd->params);
@@ -32,6 +33,7 @@ f_join(message *msg, command *cmd)
 void
 f_part(message *msg, command *cmd)
 {
+  cmd = NULL;
   if( strstr(msg->dest, "CBot") == NULL )
     {
       char *s;

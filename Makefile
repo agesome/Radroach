@@ -4,8 +4,7 @@ CFLAGS = -O0 -g -pipe -Wall -Wextra
 LIBS = -lconfuse
 INCLUDES = -I.
 FILES =  cbot.c
-# VER = `git log | head -1 | awk '{print $2}'`
-DEFS = #-D_REV=git log | head -1 | awk '{print $2}'`
+DEFS = 
 
 all: clean cbot
 
