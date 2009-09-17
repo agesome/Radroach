@@ -3,18 +3,18 @@ CC = gcc $(CFLAGS) $(DEFS) $(LIBS) $(INCLUDES)
 CFLAGS = -O0 -g -pipe -Wall -Wextra
 LIBS = -lconfuse
 INCLUDES = -I.
-FILES =  cbot.c
+FILES = radroach.c
 DEFS = 
 
-all: clean cbot
+all: clean radroach
 
-cbot: cbot.o
+radroach: radroach.o
 
-cbot.o: $(FILES)
+radroach.o: $(FILES)
 	$(CC) $(FILES) -c
 
-cbot: $(cbot)
+radroach: $(radroach)
 	$(CC) -o $@ *.o
 
 clean:
-	rm -f *.o cbot
+	rm -f *.o radroach
