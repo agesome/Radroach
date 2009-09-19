@@ -1,7 +1,7 @@
 /* #include "cbot.h" */
 
 void
-f_say(message *msg, command *cmd)
+f_reply(message *msg, command *cmd)
 {
   char *s;
   if( strstr(msg->dest, conf->nick) != NULL )
@@ -62,10 +62,38 @@ f_me(message *msg, command *cmd)
     }
   free(s);
 }
+
+void
+f_say(message *msg, command *cmd)
+{
+  /* end of target - length of target parameter from the beginning of parameters string */
+  int eot = 0;
+  /* target for the actual message, do not confuse with message->dest */
+  char *target = NULL, *tmessage = NULL, *s = NULL;
+
+  msg = NULL;
+  
+  while(cmd->params[eot] != ' ')
+    eot++;
+  target = malloc(eot - 1);
+  memcpy(target, cmd->params, eot);
+  tmessage = malloc(strlen(cmd->params) - eot + 1);
+  memcpy(tmessage, &cmd->params[eot + 1], strlen(cmd->params) - 1);
+
+  printf("%s %s\n", target, tmessage);
+  s = malloc(strlen("PRIVMSG  :\n") + strlen(target) + strlen(tmessage));
+  sprintf(s, "PRIVMSG %s :%s\n", target, tmessage);
+  raw(sock, s);
+
+  free(target);
+  free(tmessage);
+  free(s);
+}
   
 action acts[] =
   {
-    { "say", "Say something to comamnd source", NULL, &f_say },
+    { "reply", "Say something to comamnd source", NULL, &f_reply },
+    { "say", "Format is \"<target> <message>\". Bot says <message> to <target>." , NULL, &f_say},
     { "join", "Join a channel", NULL, &f_join },
     { "part", "Leave a channel", NULL, &f_part },
     { "you", "The bot will act like he does something", NULL, &f_me },    

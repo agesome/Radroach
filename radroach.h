@@ -40,7 +40,7 @@ struct settings
 
 typedef struct settings settings;
 
-#define BUFSZ 4096
+#define BUFSZ 10
 
 static char inbuf[BUFSZ + 1], *execname;
 static int sock, setup_done = 0;

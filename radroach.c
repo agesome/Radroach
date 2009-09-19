@@ -20,27 +20,45 @@ raw(int sock, char *str)
   write(sock, str, strlen(str));
 }
 
-int
-sogetline(int s, char **l)
+char *
+sogetline(int s)
 {
-  int i=0;
-  char buf[1];
-
-  free(*l);
-
-  while(read(s, buf, 1) == 1 || buf[0] != '\n')
+  char c = 0, *buf, *rebuf;
+  int r, i = 0, bsz = BUFSZ;
+  
+  buf = malloc(BUFSZ);
+  while( (r = read(s, &c, 1)) != -1 )
     {
-      inbuf[i++] = buf[0];
-      if(inbuf[i - 1] == '\n')
+      /* ordinary read */
+      if(r)
+	buf[i++] = c;
+      /* all done, reallocate and return */
+      /* string is less than our buffer, reallocate. */
+      if(c == '\n' && i < bsz)
 	{
-	  inbuf[i - 1] = '\0';
-	  inbuf[i - 2] = '\n';
-	  *l = malloc(strlen(inbuf) + 1);
-	  strcpy(*l, inbuf);
-	  return 1;
+	  buf[i] = '\0';
+	  rebuf = malloc(strlen(buf) + 1);
+	  strcpy(rebuf, buf);
+	  free(buf);
+	  return rebuf;
+	}
+      else if(c == '\n' && i == bsz)
+	{
+	  buf[i - 1] = '\0';
+	  return buf;
+	}
+      /* we've reached buffer limit, reallocate with more space */
+      if(i >= bsz)
+	{
+	  rebuf = malloc(i + BUFSZ);
+	  memcpy(rebuf, buf, i);
+	  free(buf);
+	  buf = rebuf;
+	  bsz += BUFSZ;
 	}
     }
-  return 0;
+  /* something failed and we did not return a sting earlier */
+  return NULL;
 }
       
 
@@ -112,16 +130,16 @@ sconnect(char *host)
 void
 setup(int sock)
 {
-  char *l;
+  char *l = NULL;
   if(conf->name)
     {
-      l = malloc(strlen("USER  localhost  :\n") + strlen(conf->name) + strlen(conf->nick) + strlen(conf->host));
+      l = malloc(strlen("USER  localhost  :\n") + strlen(conf->name) + strlen(conf->nick) + strlen(conf->host) + 1);
       sprintf(l, "USER %s localhost %s :%s\n", conf->nick, conf->host, conf->name);
       raw(sock, l);
     }
   else
     {
-      l = malloc(strlen("USER  localhost  :CBot - a bot in C, by age\n") + strlen(conf->nick) + strlen(conf->host));
+      l = malloc(strlen("USER  localhost  :CBot - a bot in C, by age\n") + strlen(conf->nick) + strlen(conf->host) + 1);
       sprintf(l, "USER %s localhost %s :CBot - a bot in C, by age\n", conf->nick, conf->host);
       raw(sock, l);
     }
@@ -379,7 +397,7 @@ main(int argc, char *argv[])
 
   sconnect(conf->host);
 
-  while( sogetline(sock, &l) )
+  while( (l = sogetline(sock)) != NULL )
     {
       if (p_response(l))
 	continue;
