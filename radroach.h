@@ -42,9 +42,9 @@ typedef struct settings settings;
 
 #define BUFSZ 10
 
-static char inbuf[BUFSZ + 1], *execname;
-static int sock, setup_done = 0;
-static settings *conf = NULL;
+char inbuf[BUFSZ + 1], *execname, mod = '`';
+int sock, setup_done = 0;
+settings *conf = NULL;
 
 void
 p_help(void);
@@ -52,8 +52,6 @@ void
 logstr(char *str);
 void
 raw(int sock, char *str);
-int
-sread(int sock, char *buf, int nc);
 void
 sconnect(char *host);
 void
@@ -72,3 +70,5 @@ void
 execute(message *msg, command *cmd);
 int
 configure(int argc, char *argv[]);
+char *
+sogetline(int s);

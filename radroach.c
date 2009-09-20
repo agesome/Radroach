@@ -206,8 +206,6 @@ parsemsg (const char *str)
   return result;
 }
 
-char mod = '`';
-
 command *
 parsecmd(char *str)
 {
@@ -406,6 +404,7 @@ main(int argc, char *argv[])
       	  execute(cmsg, ccmd);
       	  msgfree(cmsg);
       	}
+      free(l);
     }
   return EXIT_SUCCESS;
 }

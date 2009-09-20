@@ -1,6 +1,6 @@
 LANG="en_US.UTF-8"
 CC = gcc $(CFLAGS) $(DEFS) $(LIBS) $(INCLUDES)
-CFLAGS = -O0 -g -pipe -Wall -Wextra
+CFLAGS = -O0 -g -ggdb -pipe -Wall -Wextra
 LIBS = -lconfuse
 INCLUDES = -I.
 FILES = radroach.c
