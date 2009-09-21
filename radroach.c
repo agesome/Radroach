@@ -305,8 +305,8 @@ checkrights(message *msg)
 	free(s);
 	return 1;
       }
-  return 0;
   free(s);
+  return 0;
 }
 
 void
