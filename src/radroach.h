@@ -27,6 +27,7 @@
 #include <regex.h>
 #include <confuse.h>
 
+/* some type definitions */
 struct message
 {
   char *sender, *ident, *host, *dest, *msg;
@@ -58,8 +59,16 @@ typedef struct settings settings;
 
 #define BUFSZ 10
 
-char inbuf[BUFSZ + 1], *execname, mod = '`';
-int sock, setup_done = 0;
+char inbuf[BUFSZ + 1];
+/* trigger character */
+char action_trigger = '`';
+/* points to argv[0] */
+char *execname;
+/* variable that indicates if setup is already done */
+int setup_done = 0;
+/* global variable that refers to currently open socket */
+int sock;
+/* global configuration */
 settings *conf = NULL;
 
 void

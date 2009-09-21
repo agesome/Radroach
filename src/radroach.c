@@ -20,7 +20,7 @@
 void
 p_help(void)
 {
-  printf("Usage: [-h] -c confile\n");
+  printf("Usage: %s [-h] -c confile\n", action_trigger);
 }
 
 void
@@ -233,7 +233,7 @@ parsecmd(char *str)
   regmatch_t matches[3];
 
   /* put out trigger char in */
-  msg_regex[1] = mod;
+  msg_regex[1] = action_trigger;
   
   regcomp (regex, msg_regex, REG_ICASE | REG_EXTENDED);
   if( regexec (regex, str, 3, matches, 0) == 0)
@@ -360,6 +360,12 @@ configure(int argc, char *argv[])
 {
   char *cfile = NULL;
   int opt;
+
+  if(argc < 2)
+    {
+      p_help();
+      return 0;
+    }
   
   execname = strdup(argv[0]);
   
@@ -368,14 +374,18 @@ configure(int argc, char *argv[])
       switch(opt)
 	{
 	case 'h':
-	  p_help();
-	  break;
+	  {
+	    p_help();
+	    continue;
+	  }
 	case 'c':
-	  cfile = optarg;
-	  break;
+	  {
+	    cfile = optarg;
+	    continue;
+	  }
+	case '?':
 	default:
-	  p_help();
-	  return 0; 
+	  continue;
 	}
     }
 
@@ -403,10 +413,7 @@ main(int argc, char *argv[])
   command *ccmd = NULL;
   
   if( !configure(argc, argv) )
-    {
-      error(0, 0, "Failed to configure.");
-      exit(EXIT_FAILURE);
-    }
+    exit(EXIT_FAILURE);
 
   /* printf("%s: This is CBot, commit %s", execname, "VERSION"); */
 
