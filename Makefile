@@ -3,7 +3,7 @@ CC = gcc $(CFLAGS) $(DEFS) $(LIBS) $(INCLUDES)
 CFLAGS = -O0 -g -ggdb -pipe -Wall -Wextra
 LIBS = -lconfuse
 INCLUDES = -I.
-FILES = radroach.c
+FILES = src/radroach.c
 DEFS = 
 
 all: clean radroach
