@@ -45,7 +45,7 @@ typedef struct command command;
 struct action
 {
   char *name, *desc, *help;
-  void (*exec)(message *, command *);
+  void (*exec) (message *, command *);
 };
 
 typedef struct action action;
@@ -71,29 +71,16 @@ int sock;
 /* global configuration */
 settings *conf = NULL;
 
-void
-p_help(void);
-void
-logstr(char *str);
-void
-raw(int sock, char *str);
-void
-sconnect(char *host);
-void
-setup(int sock);
-message *
-parsemsg (char *str);
-command *
-parsecmd(char *str);
-int
-p_response(char *l);
-settings *
-parsecfg(char *cfile);
-int
-checkrights(message *msg);
-void
-execute(message *msg, command *cmd);
-int
-configure(int argc, char *argv[]);
-char *
-sogetline(int s);
+void p_help (void);
+void logstr (char *str);
+void raw (int sock, char *str);
+void sconnect (char *host);
+void setup (int sock);
+message *parsemsg (char *str);
+command *parsecmd (char *str);
+int p_response (char *l);
+settings *parsecfg (char *cfile);
+int checkrights (message * msg);
+void execute (message * msg, command * cmd);
+int configure (int argc, char *argv[]);
+char *sogetline (int s);
