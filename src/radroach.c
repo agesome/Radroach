@@ -20,7 +20,7 @@
 void
 p_help(void)
 {
-  printf("Usage: %s [-h] -c confile\n", action_trigger);
+  printf("Usage: %s [-h] -c confile\n", execname);
 }
 
 void
@@ -82,22 +82,15 @@ sogetline(int s)
 void
 cmdfree(command *cmd)
 {
-  free(cmd->action);
-  free(cmd->params);
+  free(cmd->raw);
   free(cmd);
-  cmd = NULL;
 }
 
 void
 msgfree(message *msg)
 {
-  free(msg->sender);
-  free(msg->ident);
-  free(msg->host);
-  free(msg->dest);
-  free(msg->msg);  
+  free(msg->raw);
   free(msg);
-  msg = NULL;
 }
 
 void
@@ -165,62 +158,42 @@ setup(int sock)
 
 /* parse a string, return message containing that string's data */
 message *
-parsemsg (const char *str)
+parsemsg (char *l)
 {
-  message *result;
-  enum irc_parts
-  { IRC_RAW, IRC_SENDER, IRC_IDENT, IRC_HOST, IRC_DEST, IRC_MESSAGE };
-  /* thanks nathan */
-  char irc_regex[] = "^:([^!]+)!([^@]+)@([^ ]+) [A-Z]+ ([^ ]+) :(.*)$";
-  regex_t *regex = (regex_t *) malloc (sizeof (regex_t));
-  regmatch_t matches[6];
-
-  /* regex is tested, so no error checking */
-  regcomp (regex, irc_regex, REG_ICASE | REG_EXTENDED);
-  regexec (regex, str, 6, matches, 0);
-  if( regexec (regex, str, 6, matches, 0) == 0)
+  /* we only want to parse private messages, which may contain instructions */
+  if(strstr(l, "PRIVMSG") != NULL && l[0] == ':')
     {
-      result = (message *) malloc (sizeof (message));
-      result->sender =
-	(char *) malloc (matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so + 1);
-      memcpy (result->sender, &str[matches[IRC_SENDER].rm_so],
-	      matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so);
-      result->sender[matches[IRC_SENDER].rm_eo - matches[IRC_SENDER].rm_so] = '\0';
+      message *result = malloc(sizeof(message));
+	
+      result->raw = l;
+      
+      result->sender = &l[1];
+      l = strchr(l, '!') + 1;
+      *(l - 1) = '\0';
 
-      result->ident =
-	(char *) malloc (matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so + 1);
-      memcpy (result->ident, &str[matches[IRC_IDENT].rm_so],
-	      matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so);
-      result->ident[matches[IRC_IDENT].rm_eo - matches[IRC_IDENT].rm_so] = '\0';
+      result->ident = &l[0];
+      l = strchr(l, '@') + 1;
+      *(l - 1) = '\0';
 
-      result->host =
-	(char *) malloc (matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so + 1);
-      memcpy (result->host, &str[matches[IRC_HOST].rm_so],
-	      matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so);
-      result->host[matches[IRC_HOST].rm_eo - matches[IRC_HOST].rm_so] = '\0';
+      result->host = &l[0];
+      l = strchr(l, ' ') + 1;
+      *(l - 1) = '\0';
 
-      result->dest =
-	(char *) malloc (matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so + 1);
-      memcpy (result->dest, &str[matches[IRC_DEST].rm_so],
-	      matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so);
-      result->dest[matches[IRC_DEST].rm_eo - matches[IRC_DEST].rm_so] = '\0';
+      /* we need to skip "PRIVMSG" */
+      l = strchr(l, ' ') + 1;
+      result->dest = &l[0];
+      /* skipping ":" */
+      l = strchr(l, ' ') + 2;
+      *(l - 2) = '\0';
 
-      result->msg =
-	(char *) malloc (matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so);
-      memcpy (result->msg, &str[matches[IRC_MESSAGE].rm_so],
-	      matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so);
-      result->msg[matches[IRC_MESSAGE].rm_eo - matches[IRC_MESSAGE].rm_so - 1] = '\0';
+      /* string ends with \r\n */
+      result->msg = &l[0];
+      l = strchr(l, '\r');
+      *l = '\0';
+      
+      return result;
     }
-  else
-    {
-      regfree(regex);
-      free(regex);
-      return NULL;
-    }
-
-  regfree(regex);
-  free(regex);
-  return result;
+  return NULL;
 }
 
 command *
@@ -247,6 +220,8 @@ parsecmd(char *str)
       result->params = (char *) malloc(matches[PARAM].rm_eo - matches[PARAM].rm_so + 1);
       memcpy(result->params, &str[matches[PARAM].rm_so], matches[PARAM].rm_eo - matches[PARAM].rm_so);
       result->params[matches[PARAM].rm_eo - matches[PARAM].rm_so] = '\0';
+
+      result->raw = NULL;
     }
   else
     {
@@ -266,6 +241,7 @@ p_response(char *l)
     {
       memcpy(l, "PONG", 4);
       raw(sock, l);
+      free(l);
       if( setup_done == 0)
 	{
 	  setup(sock);
@@ -338,7 +314,7 @@ execute(message *msg, command *cmd)
 	  {
 	    printf("%s: Accepted command from %s (%s@%s)\n", execname, msg->sender, msg->ident, msg->host);
 	    acts[i].exec(msg, cmd);
-	    printf("%s: Command \'%s\' executed with parameters: '%s'\n", execname, acts[i].name, cmd->params);
+	    printf("%s: Command '%s' executed with parameters: '%s'\n", execname, acts[i].name, cmd->params);
 	    break;
 	  }
 	else
@@ -353,6 +329,7 @@ execute(message *msg, command *cmd)
 	break;
       }
   cmdfree(cmd);
+  msgfree(msg);
 }
 
 int
@@ -423,12 +400,11 @@ main(int argc, char *argv[])
     {
       if (p_response(l))
 	continue;
-      if( (cmsg = parsemsg(l)) != NULL && (ccmd = parsecmd(cmsg->msg)) != NULL )
-      	{
-      	  execute(cmsg, ccmd);
-      	  msgfree(cmsg);
-      	}
-      free(l);
+      cmsg = parsemsg(l);
+      if (cmsg != NULL)
+	ccmd = parsecmd(cmsg->msg);
+      if( ccmd != NULL )
+	execute(cmsg, ccmd);
     }
   return EXIT_SUCCESS;
 }

@@ -30,14 +30,14 @@
 /* some type definitions */
 struct message
 {
-  char *sender, *ident, *host, *dest, *msg;
+  char *sender, *ident, *host, *dest, *msg, *raw;
 };
 
 typedef struct message message;
 
 struct command
 {
-  char *action, *params;
+  char *action, *params, *raw;
 };
 
 typedef struct command command;
@@ -82,7 +82,7 @@ sconnect(char *host);
 void
 setup(int sock);
 message *
-parsemsg (const char *str);
+parsemsg (char *str);
 command *
 parsecmd(char *str);
 int
