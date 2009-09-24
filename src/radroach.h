@@ -1,5 +1,5 @@
 /* Radroach is a simple IRC bot
-   Copyright (C) 2009  Evgeny Grablyk <evgeny.grablyk@gmail.com>
+   Copyright © 2009  Evgeny Grablyk <evgeny.grablyk@gmail.com>
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -57,18 +57,18 @@ struct settings
 
 typedef struct settings settings;
 
-#define BUFSZ 10
+#define BUFSZ 512
 
-char inbuf[BUFSZ + 1];
-/* trigger character */
+char inbuf[BUFSZ];
+/* Trigger character. */
 char action_trigger = '`';
-/* points to argv[0] */
+/* Points to argv[0], so it's an easily accesible name the program is run under. */
 char *execname;
-/* variable that indicates if setup is already done */
+/* Non-negative value indicates that setup is already done. ( setup() called) */
 int setup_done = 0;
-/* global variable that refers to currently open socket */
+/* Refers to currently open socket. */
 int sock;
-/* global configuration */
+/* Refers global configuration structure. */
 settings *conf = NULL;
 
 void p_help (void);
