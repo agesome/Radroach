@@ -1,10 +1,11 @@
-LANG="en_US.UTF-8"
 CC = gcc $(CFLAGS) $(DEFS) $(LIBS) $(INCLUDES)
 CFLAGS = -O0 -g -ggdb -pipe -Wall -Wextra
 LIBS = -lconfuse
-INCLUDES = -I.
+INCLUDES = 
 FILES = src/radroach.c
-DEFS = 
+COMMIT = $(shell ./getcommit.sh)
+DEFS = -DCOMMIT=\"${COMMIT}\"
+SHELL = /bin/sh
 
 all: clean radroach
 

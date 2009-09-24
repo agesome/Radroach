@@ -410,7 +410,7 @@ main (int argc, char *argv[])
   if (!configure (argc, argv))
     exit (EXIT_FAILURE);
 
-  /* printf("%s: This is CBot, commit %s", execname, "VERSION"); */
+  printf("%s: Radroach commit %s\n", execname, COMMIT);
 
   sconnect (conf->host);
 
