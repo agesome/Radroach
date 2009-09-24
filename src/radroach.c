@@ -17,25 +17,29 @@
 #include "radroach.h"
 #include "basic_actions.c"
 
+/* prints short usage instructions */
 void
 p_help (void)
 {
   printf ("Usage: %s [-h] -c confile\n", execname);
 }
 
+/* used for logging, may be extended in future */
 void
 logstr (char *str)
 {
   printf ("%s: %s", execname, str);
 }
 
+/* sends raw string `str` via global socket `sock` */
 void
-raw (int sock, char *str)
+raw (char *str)
 {
   logstr (str);
   write (sock, str, strlen (str));
 }
 
+/* returns a line from irc server */
 /* FIXME: store everything in a buffer, give out lines */
 char *
 sogetline (int s)
@@ -78,6 +82,7 @@ sogetline (int s)
   return NULL;
 }
 
+/* free() analogs for `command` and `message` */
 
 void
 cmdfree (command * cmd)
@@ -93,6 +98,7 @@ msgfree (message * msg)
   free (msg);
 }
 
+/* connects to server `host` */
 void
 sconnect (char *host)
 {
@@ -127,7 +133,7 @@ sconnect (char *host)
 
   /* inbuf is not used yet, don't scream. */
   sprintf (inbuf, "NICK %s\n", conf->nick);
-  raw (sock, inbuf);
+  raw (inbuf);
 
   return;
 
@@ -137,8 +143,9 @@ err:
   exit (EXIT_FAILURE);
 }
 
+/* things to be done once we have connected to server */
 void
-setup (int sock)
+setup (void)
 {
   char *l = NULL;
   if (conf->name)
@@ -148,7 +155,7 @@ setup (int sock)
 		strlen (conf->nick) + strlen (conf->host) + 1);
       sprintf (l, "USER %s localhost %s :%s\n", conf->nick, conf->host,
 	       conf->name);
-      raw (sock, l);
+      raw (l);
     }
   else
     {
@@ -157,7 +164,7 @@ setup (int sock)
 		strlen (conf->nick) + strlen (conf->host) + 1);
       sprintf (l, "USER %s localhost %s :CBot - a bot in C, by age\n",
 	       conf->nick, conf->host);
-      raw (sock, l);
+      raw (l);
     }
   free (l);
 }
@@ -202,6 +209,7 @@ parsemsg (char *l)
   return NULL;
 }
 
+/* parse a string, return a command containing apropriate data */
 command *
 parsecmd (char *str)
 {
@@ -245,13 +253,14 @@ parsecmd (char *str)
   return result;
 }
 
+/* check if `l` contains a ping request, serve it if it does */
 int
 p_response (char *l)
 {
   if (strstr (l, "PING ") != NULL)
     {
       memcpy (l, "PONG", 4);
-      raw (sock, l);
+      raw (l);
       free (l);
       if (setup_done == 0)
 	{
@@ -263,6 +272,7 @@ p_response (char *l)
   return 0;
 }
 
+/* parse configuration file `cfile` */
 settings *
 parsecfg (char *cfile)
 {
@@ -293,9 +303,11 @@ parsecfg (char *cfile)
   /* check for necessary settings */
   if (status == CFG_SUCCESS && conf->nick != NULL && conf->host != NULL)
     return conf;
+  
   return NULL;
 }
 
+/* check if message is from a trusted source */
 int
 checkrights (message * msg)
 {
@@ -313,6 +325,7 @@ checkrights (message * msg)
   return 0;
 }
 
+/* execute apropriate function as `cmd` specifies */
 void
 execute (message * msg, command * cmd)
 {
@@ -349,6 +362,7 @@ execute (message * msg, command * cmd)
   msgfree (msg);
 }
 
+/* parse commandline arguments */
 int
 configure (int argc, char *argv[])
 {

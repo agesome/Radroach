@@ -26,7 +26,7 @@ f_reply (message * msg, command * cmd)
 	(char *) malloc (strlen ("PRIVMSG  :\n") + strlen (msg->sender) +
 			 strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :%s\n", msg->sender, cmd->params);
-      raw (sock, s);
+      raw (s);
     }
   else
     {
@@ -34,7 +34,7 @@ f_reply (message * msg, command * cmd)
 	(char *) malloc (strlen ("PRIVMSG  :\n") + strlen (msg->dest) +
 			 strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :%s\n", msg->dest, cmd->params);
-      raw (sock, s);
+      raw (s);
     }
   free (s);
 }
@@ -46,7 +46,7 @@ f_join (message * msg, command * cmd)
   char *s;
   s = (char *) malloc (strlen ("JOIN \n") + strlen (cmd->params));
   sprintf (s, "JOIN %s\n", cmd->params);
-  raw (sock, s);
+  raw (s);
   free (s);
 }
 
@@ -59,7 +59,7 @@ f_part (message * msg, command * cmd)
       char *s;
       s = (char *) malloc (strlen ("PART \n") + strlen (msg->dest));
       sprintf (s, "PART %s\n", msg->dest);
-      raw (sock, s);
+      raw (s);
       free (s);
     }
 }
@@ -75,7 +75,7 @@ f_me (message * msg, command * cmd)
 			 strlen (msg->sender) + strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :\001ACTION %s\001\n", msg->sender,
 	       cmd->params);
-      raw (sock, s);
+      raw (s);
     }
   else
     {
@@ -83,7 +83,7 @@ f_me (message * msg, command * cmd)
 	(char *) malloc (strlen ("PRIVMSG  :\001ACTION \001\n") +
 			 strlen (msg->dest) + strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :\001ACTION %s\001\n", msg->dest, cmd->params);
-      raw (sock, s);
+      raw (s);
     }
   free (s);
 }
@@ -108,7 +108,7 @@ f_say (message * msg, command * cmd)
   printf ("%s %s\n", target, tmessage);
   s = malloc (strlen ("PRIVMSG  :\n") + strlen (target) + strlen (tmessage));
   sprintf (s, "PRIVMSG %s :%s\n", target, tmessage);
-  raw (sock, s);
+  raw (s);
 
   free (target);
   free (tmessage);

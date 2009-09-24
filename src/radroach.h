@@ -73,9 +73,9 @@ settings *conf = NULL;
 
 void p_help (void);
 void logstr (char *str);
-void raw (int sock, char *str);
+void raw (char *str);
 void sconnect (char *host);
-void setup (int sock);
+void setup (void);
 message *parsemsg (char *str);
 command *parsecmd (char *str);
 int p_response (char *l);
