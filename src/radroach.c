@@ -286,7 +286,7 @@ checkrights (message * msg)
 {
   char *l, *s;
 
-  s = malloc (1 + strlen (msg->ident) + strlen (msg->host));
+  s = malloc (2 + strlen (msg->ident) + strlen (msg->host));
   sprintf (s, "%s@%s", msg->ident, msg->host);
   for (l = strtok (conf->trusted, " "); l != NULL; l = strtok (NULL, " "))
     if (strstr (s, l))

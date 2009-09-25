@@ -42,7 +42,7 @@ f_join (message * msg, command * cmd)
 {
   msg = NULL;
   char *s;
-  s = malloc (strlen ("JOIN \n") + strlen (cmd->params));
+  s = malloc (strlen ("JOIN \n") + strlen (cmd->params) + 1);
   sprintf (s, "JOIN %s\n", cmd->params);
   raw (s);
   free (s);
@@ -55,7 +55,7 @@ f_part (message * msg, command * cmd)
   if (strstr (msg->dest, conf->nick) == NULL)
     {
       char *s;
-      s = malloc (strlen ("PART \n") + strlen (msg->dest));
+      s = malloc (strlen ("PART \n") + strlen (msg->dest) + 1);
       sprintf (s, "PART %s\n", msg->dest);
       raw (s);
       free (s);
@@ -69,7 +69,7 @@ f_me (message * msg, command * cmd)
   if (strstr (msg->dest, conf->nick) != NULL)
     {
       s = malloc (strlen ("PRIVMSG  :\001ACTION \001\n") +
-		  strlen (msg->sender) + strlen (cmd->params));
+		  strlen (msg->sender) + strlen (cmd->params) + 1);
       sprintf (s, "PRIVMSG %s :\001ACTION %s\001\n", msg->sender,
 	       cmd->params);
       raw (s);
@@ -77,7 +77,7 @@ f_me (message * msg, command * cmd)
   else
     {
       s = malloc (strlen ("PRIVMSG  :\001ACTION \001\n") +
-		  strlen (msg->dest) + strlen (cmd->params));
+		  strlen (msg->dest) + strlen (cmd->params) + 1);
       sprintf (s, "PRIVMSG %s :\001ACTION %s\001\n", msg->dest, cmd->params);
       raw (s);
     }
@@ -95,7 +95,7 @@ f_say (message * msg, command * cmd)
   tmessage = strchr (cmd->params, ' ') + 1;
   *(tmessage - 1) = '\0';
 
-  s = malloc (strlen ("PRIVMSG  :\n") + strlen (target) + strlen (tmessage));
+  s = malloc (strlen ("PRIVMSG  :\n") + strlen (target) + strlen (tmessage) + 1);
   sprintf (s, "PRIVMSG %s :%s\n", target, tmessage);
   raw (s);
 
@@ -111,14 +111,14 @@ f_trigger (message * msg, command * cmd)
   if (strstr (msg->dest, conf->nick) != NULL)
     {
       s = malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
-		  strlen (cmd->params));
+		  strlen (cmd->params) + 1);
       sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->sender, cmd->params[0]);
       raw (s);
     }
   else
     {
       s = malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
-			 strlen (cmd->params));
+			 strlen (cmd->params) + 1);
       sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->dest, cmd->params[0]);
       raw (s);
     }
