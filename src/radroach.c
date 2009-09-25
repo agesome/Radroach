@@ -311,9 +311,9 @@ execute (message * msg, command * cmd)
 	  {
 	    printf ("%s: Accepted command from %s (%s@%s)\n", execname,
 		    msg->sender, msg->ident, msg->host);
-	    acts[i].exec (msg, cmd);
-	    printf ("%s: Command '%s' executed with parameters: '%s'\n",
+	    printf ("%s: Executing command '%s' with parameters: '%s'\n",
 		    execname, acts[i].name, cmd->params);
+	    acts[i].exec (msg, cmd);
 	    break;
 	  }
 	else

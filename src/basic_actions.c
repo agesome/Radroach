@@ -87,25 +87,18 @@ f_me (message * msg, command * cmd)
 void
 f_say (message * msg, command * cmd)
 {
-  /* end of target - length of target parameter from the beginning of parameters string */
-  int eot = 0;
   /* target for the actual message, do not confuse with message->dest */
   char *target = NULL, *tmessage = NULL, *s = NULL;
   msg = NULL;
 
-  while (cmd->params[eot] != ' ')
-    eot++;
-  target = malloc (eot - 1);
-  memcpy (target, cmd->params, eot);
-  tmessage = malloc (strlen (cmd->params) - eot + 1);
-  memcpy (tmessage, &cmd->params[eot + 1], strlen (cmd->params) - 1);
+  target = cmd->params;
+  tmessage = strchr (cmd->params, ' ') + 1;
+  *(tmessage - 1) = '\0';
 
   s = malloc (strlen ("PRIVMSG  :\n") + strlen (target) + strlen (tmessage));
   sprintf (s, "PRIVMSG %s :%s\n", target, tmessage);
   raw (s);
 
-  free (target);
-  free (tmessage);
   free (s);
 }
 
