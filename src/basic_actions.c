@@ -115,6 +115,31 @@ f_say (message * msg, command * cmd)
   free (s);
 }
 
+void
+f_trigger (message * msg, command * cmd)
+{
+  trigger_char = cmd->params[0];
+
+  char *s;
+  if (strstr (msg->dest, conf->nick) != NULL)
+    {
+      s =
+	(char *) malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
+			 strlen (cmd->params));
+      sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->sender, cmd->params[0]);
+      raw (s);
+    }
+  else
+    {
+      s =
+	(char *) malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
+			 strlen (cmd->params));
+      sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->dest, cmd->params[0]);
+      raw (s);
+    }
+  free (s);
+}
+
 action acts[] = {
   {"reply", "Say something to comamnd source", NULL, &f_reply}
   ,
@@ -126,6 +151,8 @@ action acts[] = {
   {"part", "Leave a channel", NULL, &f_part}
   ,
   {"you", "The bot will act like he does something", NULL, &f_me}
+  ,
+  {"trigger", "Changes trigger character", NULL, &f_trigger}
   ,
   {NULL, NULL, NULL, NULL}	/* so we can detect end of array */
 };
