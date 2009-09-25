@@ -22,16 +22,14 @@ f_reply (message * msg, command * cmd)
   char *s;
   if (strstr (msg->dest, conf->nick) != NULL)
     {
-      s =
-	(char *) malloc (strlen ("PRIVMSG  :\n") + strlen (msg->sender) +
-			 strlen (cmd->params));
+      s = malloc (strlen ("PRIVMSG  :\n") + strlen (msg->sender) +
+		  strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :%s\n", msg->sender, cmd->params);
       raw (s);
     }
   else
     {
-      s =
-	(char *) malloc (strlen ("PRIVMSG  :\n") + strlen (msg->dest) +
+      s = malloc (strlen ("PRIVMSG  :\n") + strlen (msg->dest) +
 			 strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :%s\n", msg->dest, cmd->params);
       raw (s);
@@ -44,7 +42,7 @@ f_join (message * msg, command * cmd)
 {
   msg = NULL;
   char *s;
-  s = (char *) malloc (strlen ("JOIN \n") + strlen (cmd->params));
+  s = malloc (strlen ("JOIN \n") + strlen (cmd->params));
   sprintf (s, "JOIN %s\n", cmd->params);
   raw (s);
   free (s);
@@ -57,7 +55,7 @@ f_part (message * msg, command * cmd)
   if (strstr (msg->dest, conf->nick) == NULL)
     {
       char *s;
-      s = (char *) malloc (strlen ("PART \n") + strlen (msg->dest));
+      s = malloc (strlen ("PART \n") + strlen (msg->dest));
       sprintf (s, "PART %s\n", msg->dest);
       raw (s);
       free (s);
@@ -70,18 +68,16 @@ f_me (message * msg, command * cmd)
   char *s;
   if (strstr (msg->dest, conf->nick) != NULL)
     {
-      s =
-	(char *) malloc (strlen ("PRIVMSG  :\001ACTION \001\n") +
-			 strlen (msg->sender) + strlen (cmd->params));
+      s = malloc (strlen ("PRIVMSG  :\001ACTION \001\n") +
+		  strlen (msg->sender) + strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :\001ACTION %s\001\n", msg->sender,
 	       cmd->params);
       raw (s);
     }
   else
     {
-      s =
-	(char *) malloc (strlen ("PRIVMSG  :\001ACTION \001\n") +
-			 strlen (msg->dest) + strlen (cmd->params));
+      s = malloc (strlen ("PRIVMSG  :\001ACTION \001\n") +
+		  strlen (msg->dest) + strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :\001ACTION %s\001\n", msg->dest, cmd->params);
       raw (s);
     }
@@ -123,16 +119,14 @@ f_trigger (message * msg, command * cmd)
   char *s;
   if (strstr (msg->dest, conf->nick) != NULL)
     {
-      s =
-	(char *) malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
-			 strlen (cmd->params));
+      s = malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
+		  strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->sender, cmd->params[0]);
       raw (s);
     }
   else
     {
-      s =
-	(char *) malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
+      s = malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
 			 strlen (cmd->params));
       sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->dest, cmd->params[0]);
       raw (s);
