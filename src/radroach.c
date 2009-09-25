@@ -82,15 +82,7 @@ sogetline (int s)
   return NULL;
 }
 
-/* free() analogs for `command` and `message` */
-
-void
-cmdfree (command * cmd)
-{
-  free (cmd->raw);
-  free (cmd);
-}
-
+/* free(), but for `message` */
 void
 msgfree (message * msg)
 {
@@ -177,7 +169,6 @@ parsemsg (char *l)
   if (strstr (l, "PRIVMSG") != NULL && l[0] == ':')
     {
       message *result = malloc (sizeof (message));
-
       result->raw = l;
 
       result->sender = &l[1];
@@ -199,7 +190,7 @@ parsemsg (char *l)
       l = strchr (l, ' ') + 2;
       *(l - 2) = '\0';
 
-      /* string ends with \r\n */
+      /* string ends with \r\n, we want just \0 */
       result->msg = &l[0];
       l = strchr (l, '\r');
       *l = '\0';
@@ -211,46 +202,28 @@ parsemsg (char *l)
 
 /* parse a string, return a command containing apropriate data */
 command *
-parsecmd (char *str)
+parsecmd (char *l)
 {
-  command *result;
-  char msg_regex[] = "^ ([^ ]+) (.*)";
-  enum act
-  { RAW, ACT, PARAM };
-  regex_t *regex = (regex_t *) malloc (sizeof (regex_t));
-  regmatch_t matches[3];
-
-  /* put out trigger char in */
-  msg_regex[1] = action_trigger;
-
-  regcomp (regex, msg_regex, REG_ICASE | REG_EXTENDED);
-  if (regexec (regex, str, 3, matches, 0) == 0)
+  if (l[0] == action_trigger)
     {
-      result = (command *) malloc (sizeof (command));
-
-      result->action =
-	(char *) malloc (matches[ACT].rm_eo - matches[ACT].rm_so + 1);
-      memcpy (result->action, &str[matches[ACT].rm_so],
-	      matches[ACT].rm_eo - matches[ACT].rm_so);
-      result->action[matches[ACT].rm_eo - matches[ACT].rm_so] = '\0';
-
-      result->params =
-	(char *) malloc (matches[PARAM].rm_eo - matches[PARAM].rm_so + 1);
-      memcpy (result->params, &str[matches[PARAM].rm_so],
-	      matches[PARAM].rm_eo - matches[PARAM].rm_so);
-      result->params[matches[PARAM].rm_eo - matches[PARAM].rm_so] = '\0';
-
-      result->raw = NULL;
+      command *result = malloc (sizeof (command));
+      result->action = &l[1];
+      
+      l = strchr (l, ' ');       /* if there is a space after command name, we may expect parameters */
+      if (l != NULL )
+	{
+	  *l = '\0';
+	  l++;
+	  result->params = (*l != '\0') ? l : NULL;
+	  return result;
+	}
+      else			/* there are no parameters at all */
+	{
+	  result->params = NULL;
+	  return result;
+	}
     }
-  else
-    {
-      regfree (regex);
-      free (regex);
-      return NULL;
-    }
-  regfree (regex);
-  free (regex);
-  return result;
+  return NULL;
 }
 
 /* check if `l` contains a ping request, serve it if it does */
@@ -264,7 +237,7 @@ p_response (char *l)
       free (l);
       if (setup_done == 0)
 	{
-	  setup (sock);
+	  setup ();
 	  setup_done = 1;
 	}
       return 1;
@@ -357,8 +330,8 @@ execute (message * msg, command * cmd)
 	  ("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
 	   execname, cmd->action, cmd->params);
 	break;
-      }
-  cmdfree (cmd);
+      }  
+  free (cmd);
   msgfree (msg);
 }
 
@@ -434,9 +407,11 @@ main (int argc, char *argv[])
 	continue;
       cmsg = parsemsg (l);
       if (cmsg != NULL)
-	ccmd = parsecmd (cmsg->msg);
-      if (ccmd != NULL)
-	execute (cmsg, ccmd);
+	{
+	  ccmd = parsecmd (cmsg->msg);
+	  if (ccmd != NULL)
+	    execute (cmsg, ccmd);
+	}
     }
   return EXIT_SUCCESS;
 }

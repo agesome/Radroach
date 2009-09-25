@@ -54,7 +54,7 @@ void
 f_part (message * msg, command * cmd)
 {
   cmd = NULL;
-  if (strstr (msg->dest, "CBot") == NULL)
+  if (strstr (msg->dest, conf->nick) == NULL)
     {
       char *s;
       s = (char *) malloc (strlen ("PART \n") + strlen (msg->dest));
@@ -68,7 +68,7 @@ void
 f_me (message * msg, command * cmd)
 {
   char *s;
-  if (strstr (msg->dest, "CBot") != NULL)
+  if (strstr (msg->dest, conf->nick) != NULL)
     {
       s =
 	(char *) malloc (strlen ("PRIVMSG  :\001ACTION \001\n") +

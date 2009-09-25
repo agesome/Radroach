@@ -37,7 +37,7 @@ typedef struct message message;
 
 struct command
 {
-  char *action, *params, *raw;
+  char *action, *params;
 };
 
 typedef struct command command;
