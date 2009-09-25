@@ -394,10 +394,10 @@ main (int argc, char *argv[])
   message *cmsg = NULL;
   command *ccmd = NULL;
 
+  printf("%s: This is Radroach commit %s\n", argv[0], COMMIT);
+
   if (!configure (argc, argv))
     exit (EXIT_FAILURE);
-
-  printf("%s: Radroach commit %s\n", execname, COMMIT);
 
   sconnect (conf->host);
 

@@ -14,7 +14,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-/* very basic actions */
+/* very basic actions, look for function descriptions at the end of file */
 
 void
 f_reply (message * msg, command * cmd)
@@ -23,14 +23,14 @@ f_reply (message * msg, command * cmd)
   if (strstr (msg->dest, conf->nick) != NULL)
     {
       s = malloc (strlen ("PRIVMSG  :\n") + strlen (msg->sender) +
-		  strlen (cmd->params));
+		  strlen (cmd->params) + 2);
       sprintf (s, "PRIVMSG %s :%s\n", msg->sender, cmd->params);
       raw (s);
     }
   else
     {
       s = malloc (strlen ("PRIVMSG  :\n") + strlen (msg->dest) +
-			 strlen (cmd->params));
+			 strlen (cmd->params) + 2);
       sprintf (s, "PRIVMSG %s :%s\n", msg->dest, cmd->params);
       raw (s);
     }
@@ -91,7 +91,6 @@ f_say (message * msg, command * cmd)
   int eot = 0;
   /* target for the actual message, do not confuse with message->dest */
   char *target = NULL, *tmessage = NULL, *s = NULL;
-
   msg = NULL;
 
   while (cmd->params[eot] != ' ')
@@ -101,7 +100,6 @@ f_say (message * msg, command * cmd)
   tmessage = malloc (strlen (cmd->params) - eot + 1);
   memcpy (tmessage, &cmd->params[eot + 1], strlen (cmd->params) - 1);
 
-  printf ("%s %s\n", target, tmessage);
   s = malloc (strlen ("PRIVMSG  :\n") + strlen (target) + strlen (tmessage));
   sprintf (s, "PRIVMSG %s :%s\n", target, tmessage);
   raw (s);
@@ -114,7 +112,7 @@ f_say (message * msg, command * cmd)
 void
 f_trigger (message * msg, command * cmd)
 {
-  trigger_char = cmd->params[0];
+  action_trigger = cmd->params[0];
 
   char *s;
   if (strstr (msg->dest, conf->nick) != NULL)
