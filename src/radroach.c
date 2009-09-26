@@ -52,34 +52,35 @@ sogetline (int s)
     {
       /* ordinary read */
       if (r)
-	buf[i++] = c;
+  	buf[i++] = c;
       /* all done, reallocate and return */
       /* string is less than our buffer, reallocate. */
       if (c == '\n' && i < bsz)
-	{
-	  buf[i] = '\0';
-	  rebuf = malloc (strlen (buf) + 1);
-	  strcpy (rebuf, buf);
-	  free (buf);
-	  return rebuf;
-	}
+  	{
+  	  buf[i] = '\0';
+  	  rebuf = malloc (strlen (buf) + 1);
+  	  strcpy (rebuf, buf);
+  	  free (buf);
+  	  return rebuf;
+  	}
       else if (c == '\n' && i == bsz)
-	{
-	  buf[i - 1] = '\0';
-	  return buf;
-	}
+  	{
+  	  buf[i - 1] = '\0';
+  	  return buf;
+  	}
       /* we've reached buffer limit, reallocate with more space */
       if (i >= bsz)
-	{
-	  rebuf = malloc (i + BUFSZ);
-	  memcpy (rebuf, buf, i);
-	  free (buf);
-	  buf = rebuf;
-	  bsz += BUFSZ;
-	}
+  	{
+  	  rebuf = malloc (i + BUFSZ);
+  	  memcpy (rebuf, buf, i);
+  	  free (buf);
+  	  buf = rebuf;
+  	  bsz += BUFSZ;
+  	}
     }
   /* something failed and we did not return a sting earlier */
   return NULL;
+  
 }
 
 /* free(), but for `message` */
@@ -204,7 +205,7 @@ parsemsg (char *l)
 command *
 parsecmd (char *l)
 {
-  if (l[0] == action_trigger)
+  if (l[0] == action_trigger && l[1] != ' ')
     {
       command *result = malloc (sizeof (command));
       result->action = &l[1];
@@ -304,10 +305,10 @@ execute (message * msg, command * cmd)
 {
   int i;
 
-  for (i = 0; acts[i].name != NULL; ++i)
-    if (strstr (acts[i].name, cmd->action))
-      {
-	if (checkrights (msg))
+  if (checkrights (msg))
+    {
+      for (i = 0; acts[i].name != NULL; ++i)
+	if (strstr (acts[i].name, cmd->action))
 	  {
 	    printf ("%s: Accepted command from %s (%s@%s)\n", execname,
 		    msg->sender, msg->ident, msg->host);
@@ -316,21 +317,17 @@ execute (message * msg, command * cmd)
 	    acts[i].exec (msg, cmd);
 	    break;
 	  }
-	else
+	else if (acts[i + 1].name == NULL)
 	  {
-	    printf ("%s: %s (%s@%s) is not trusted! (tried to execute: %s)\n",
-		    execname, msg->sender, msg->ident, msg->host,
-		    acts[i].name);
+	    printf ("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
+		    execname, cmd->action, cmd->params);
 	    break;
 	  }
-      }
-    else if (acts[i + 1].name == NULL)
-      {
-	printf
-	  ("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
-	   execname, cmd->action, cmd->params);
-	break;
-      }  
+    }
+  else
+    printf ("%s: %s (%s@%s) is not trusted!\n",
+	    execname, msg->sender, msg->ident, msg->host);
+  
   free (cmd);
   msgfree (msg);
 }
