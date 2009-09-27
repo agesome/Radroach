@@ -15,6 +15,11 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 /* very basic actions, look for function descriptions at the end of file */
+#include "../radroach.h"
+
+settings *conf = NULL;
+
+#include "../util.c"
 
 void
 f_reply (message * msg, command * cmd)
@@ -105,7 +110,7 @@ f_say (message * msg, command * cmd)
 void
 f_trigger (message * msg, command * cmd)
 {
-  action_trigger = cmd->params[0];
+  conf->action_trigger = cmd->params[0];
 
   char *s;
   if (strstr (msg->dest, conf->nick) != NULL)
@@ -125,19 +130,24 @@ f_trigger (message * msg, command * cmd)
   free (s);
 }
 
-action acts[] = {
-  {"reply", "Say something to comamnd source", NULL, &f_reply}
-  ,
-  {"say", "Format is \"<target> <message>\". Bot says <message> to <target>.",
-   NULL, &f_say}
-  ,
-  {"join", "Join a channel", NULL, &f_join}
-  ,
-  {"part", "Leave a channel", NULL, &f_part}
-  ,
-  {"you", "The bot will act like he does something", NULL, &f_me}
-  ,
-  {"trigger", "Changes trigger character", NULL, &f_trigger}
-  ,
-  {NULL, NULL, NULL, NULL}	/* so we can detect end of array */
-};
+void
+load ( int (*action_add)(char *, void (*)(message *, command *)) )
+{
+  action_add("join", &f_join);
+  action_add("you", &f_me);
+  action_add("leave", &f_part);
+  action_add("say", &f_say);
+  action_add("trigger", &f_trigger);
+  action_add("reply", &f_reply);
+}
+
+void
+unload(void)
+{
+}
+
+void
+setconf(settings *c)
+{
+  conf = c;
+}

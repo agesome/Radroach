@@ -15,28 +15,22 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "radroach.h"
-#include "basic_actions.c"
+#define BUFSZ 10
+
+char inbuf[BUFSZ];
+/* Non-negative value indicates that setup is already done. ( setup() called) */
+int setup_done = 0;
+/* Refers global configuration structure. */
+settings *conf = NULL;
+
+#include "util.c"
+#include "plugins.c"
 
 /* prints short usage instructions */
 void
 p_help (void)
 {
-  printf ("Usage: %s [-h] -c confile\n", execname);
-}
-
-/* used for logging, may be extended in future */
-void
-logstr (char *str)
-{
-  printf ("%s: %s", execname, str);
-}
-
-/* sends raw string `str` via global socket `sock` */
-void
-raw (char *str)
-{
-  logstr (str);
-  write (sock, str, strlen (str));
+  printf ("Usage: %s [-h] -c confile\n", conf->execname);
 }
 
 /* returns a line from irc server */
@@ -96,7 +90,7 @@ void
 sconnect (char *host)
 {
   struct addrinfo *server = NULL, hints;
-  int st;
+  int st, sock;
 
   memset (&hints, 0, sizeof (struct addrinfo));
   hints.ai_family = AF_UNSPEC;
@@ -122,6 +116,7 @@ sconnect (char *host)
       goto err;
     }
   logstr ("Connected.\n");
+  conf->sock = sock;
   freeaddrinfo (server);
 
   /* inbuf is not used yet, don't scream. */
@@ -205,7 +200,7 @@ parsemsg (char *l)
 command *
 parsecmd (char *l)
 {
-  if (l[0] == action_trigger && l[1] != ' ')
+  if (l[0] == conf->action_trigger && l[1] != ' ')
     {
       command *result = malloc (sizeof (command));
       result->action = &l[1];
@@ -247,11 +242,10 @@ p_response (char *l)
 }
 
 /* parse configuration file `cfile` */
-settings *
+int
 parsecfg (char *cfile)
 {
   cfg_t *cfg = NULL;
-  settings *conf = (settings *) malloc (sizeof (settings));
   int status;
 
   cfg_opt_t opts[] = {
@@ -272,13 +266,12 @@ parsecfg (char *cfile)
 
   cfg = cfg_init (opts, 0);
   status = cfg_parse (cfg, cfile);
-  printf ("%s: Trusted users are: %s\n", execname, conf->trusted);
+  printf ("%s: Trusted users are: %s\n", conf->execname, conf->trusted);
   /* printf("%s %s %s %s\n", conf->nick, conf->name, conf->host, conf->password); */
   /* check for necessary settings */
   if (status == CFG_SUCCESS && conf->nick != NULL && conf->host != NULL)
-    return conf;
-  
-  return NULL;
+    return 1;
+  return 0;
 }
 
 /* check if message is from a trusted source */
@@ -303,30 +296,30 @@ checkrights (message * msg)
 void
 execute (message * msg, command * cmd)
 {
-  int i;
+  action *a;
 
   if (checkrights (msg))
     {
-      for (i = 0; acts[i].name != NULL; ++i)
-	if (strstr (acts[i].name, cmd->action))
+      for(a = a_root; a != NULL; a = a->next)
+	if (strstr (a->name, cmd->action))
 	  {
-	    printf ("%s: Accepted command from %s (%s@%s)\n", execname,
+	    printf ("%s: Accepted command from %s (%s@%s)\n", conf->execname,
 		    msg->sender, msg->ident, msg->host);
 	    printf ("%s: Executing command '%s' with parameters: '%s'\n",
-		    execname, acts[i].name, cmd->params);
-	    acts[i].exec (msg, cmd);
+		    conf->execname, a->name, cmd->params);
+	    a->exec (msg, cmd);
 	    break;
 	  }
-	else if (acts[i + 1].name == NULL)
+	else if (a->next == NULL)
 	  {
 	    printf ("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
-		    execname, cmd->action, cmd->params);
+		    conf->execname, cmd->action, cmd->params);
 	    break;
 	  }
-    }
+    }  
   else
     printf ("%s: %s (%s@%s) is not trusted!\n",
-	    execname, msg->sender, msg->ident, msg->host);
+	    conf->execname, msg->sender, msg->ident, msg->host);
   
   free (cmd);
   msgfree (msg);
@@ -338,14 +331,15 @@ configure (int argc, char *argv[])
 {
   char *cfile = NULL;
   int opt;
-
+  conf = (settings *) malloc (sizeof (settings));
+  
   if (argc < 2)
     {
       p_help ();
       return 0;
     }
 
-  execname = strdup (argv[0]);
+  conf->execname = argv[0];
 
   while ((opt = getopt (argc, argv, "hc:")) != -1)
     {
@@ -373,9 +367,9 @@ configure (int argc, char *argv[])
       return 0;
     }
 
-  printf ("%s: Configuration file selected: %s\n", execname, cfile);
+  printf ("%s: Configuration file selected: %s\n", conf->execname, cfile);
 
-  if ((conf = parsecfg (cfile)) == NULL)
+  if (!parsecfg (cfile))
     {
       error (0, 0,
 	     "You did not specify nickname and host or parsing configuration failed.");
@@ -395,10 +389,13 @@ main (int argc, char *argv[])
 
   if (!configure (argc, argv))
     exit (EXIT_FAILURE);
-
+  conf->action_trigger = '`'; 	/* default trigger char */
+  
+  plugin_load("./basic_actions.so");
+  
   sconnect (conf->host);
 
-  while ((l = sogetline (sock)) != NULL)
+  while ((l = sogetline (conf->sock)) != NULL)
     {
       if (p_response (l))
 	continue;

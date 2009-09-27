@@ -1,8 +1,9 @@
-CC = gcc $(CFLAGS) $(DEFS) $(LIBS) $(INCLUDES)
+CC = gcc $(DEFS) $(LIBS) $(INCLUDES) $(CFLAGS)
 CFLAGS = -O0 -g -ggdb -pipe -Wall -Wextra
-LIBS = -lconfuse
+LIBS = -lconfuse -ldl
 INCLUDES = 
 FILES = src/radroach.c
+PFILES = src/plugins/basic_actions.c
 COMMIT = $(shell ./getcommit.sh)
 DEFS = -DCOMMIT=\"${COMMIT}\"
 SHELL = /bin/sh
@@ -18,4 +19,8 @@ radroach: $(radroach)
 	$(CC) -o $@ *.o
 
 clean:
-	rm -f *.o radroach
+	rm -f *.o
+
+basic_actions: $(PFILES)
+	$(CC) -fPIC -c $(PFILES)
+	$(CC) -shared -o $@.so $@.o

@@ -26,61 +26,28 @@
 #include <netdb.h>
 #include <regex.h>
 #include <confuse.h>
+#include <dlfcn.h>
 
 /* some type definitions */
-struct message
+typedef struct message
 {
   char *sender, *ident, *host, *dest, *msg, *raw;
-};
+} message;
 
-typedef struct message message;
-
-struct command
+typedef struct command
 {
   char *action, *params;
-};
+} command;
 
-typedef struct command command;
-
-struct action
+typedef struct action
 {
-  char *name, *desc, *help;
+  char *name;
   void (*exec) (message *, command *);
-};
+  struct action *next;
+} action;
 
-typedef struct action action;
-
-struct settings
+typedef struct settings
 {
-  char *nick, *name, *host, *trusted, *password;
-};
-
-typedef struct settings settings;
-
-#define BUFSZ 512
-
-char inbuf[BUFSZ];
-/* Trigger character. */
-char action_trigger = '`';
-/* Points to argv[0], so it's an easily accesible name the program is run under. */
-char *execname;
-/* Non-negative value indicates that setup is already done. ( setup() called) */
-int setup_done = 0;
-/* Refers to currently open socket. */
-int sock;
-/* Refers global configuration structure. */
-settings *conf = NULL;
-
-void p_help (void);
-void logstr (char *str);
-void raw (char *str);
-void sconnect (char *host);
-void setup (void);
-message *parsemsg (char *str);
-command *parsecmd (char *str);
-int p_response (char *l);
-settings *parsecfg (char *cfile);
-int checkrights (message * msg);
-void execute (message * msg, command * cmd);
-int configure (int argc, char *argv[]);
-char *sogetline (int s);
+  char *nick, *name, *host, *trusted, *password, action_trigger, *execname;
+  int sock;
+} settings;
