@@ -1,114 +1,231 @@
-/* Radroach is a simple IRC bot
-   Copyright © 2009  Evgeny Grablyk <evgeny.grablyk@gmail.com>
+/* This file is part of Radroach.
    
-   This program is free software: you can redistribute it and/or modify
+   Radroach is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
    
-   This program is distributed in the hope that it will be useful,
+   Foobar is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
    
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>. */
+   along with Radroach.  If not, see <http://www.gnu.org/licenses/>. */
 
-/* implements support for plugins */
+/* implements support for loadable plugins */
 
-typedef struct
+typedef struct plugin
 {
-  char *name;
-  void *location;
-  void (*load)( int (*)(char *, void (*)(message * msg, command * cmd)) );
-  void (*unload)( int (*)(char *name, void (*)(message * msg, command * cmd)) );
+  char *name, *path;
+  void *loc;
+  void (*unload)( int (*)(char *) );
   struct plugin *next;
 } plugin;
 
 plugin *p_root = NULL;
 action *a_root = NULL;
 
+plugin *
+lastp(void)
+{
+  plugin *p = p_root;
+
+  while(p != NULL && p->next != NULL)
+    p = p->next;
+  return p;
+}
+
+action *
+lasta(void)
+{
+  action *a = a_root;
+
+  while(a->next != NULL)
+    a = a->next;
+  return a;
+}
+
+plugin *
+findp(char *name, int ispath, int retnext)
+{
+  plugin *p = p_root, *l;
+  char *r = NULL;
+  
+  while(p != NULL)
+    {
+      if (retnext && p->next != NULL)
+	{
+	  l = p;
+	  p = p->next;
+	}
+      else if (retnext)
+	return 0;
+	
+      if (ispath)
+	r = strstr(p->path, name);
+      else
+	r = strstr(p->name, name);
+      if (r != NULL)
+	return p;
+      p = l->next;
+    }
+  return NULL;
+}
+
+action *
+finda(char *name, int retnext)
+{
+  action *a = a_root;
+  char *r = NULL;
+
+  while(a != NULL)
+    {
+      if (a->next != NULL && retnext)
+	r = strstr((a->next)->name, name);
+      else if (!retnext)
+	r = strstr(a->name, name);
+      if (r != NULL)
+	return a;
+      a = a->next;
+    }
+  return NULL;
+}
+
 int
 action_add(char *name, void (*f)(message * msg, command * cmd))
 {
-  action *a, *p;
-  if (a_root == NULL)
-    {
-      a_root = malloc (sizeof (action));
-      a = a_root;
-      a->next = NULL;
-    }
-  else
-    {
-      for(p = a_root; p->next != NULL; p = p->next);
-      p->next = a = malloc (sizeof (action));
-      a->next = NULL;
-    }
+  action *a;
+
+  if (finda (name, 0) != NULL)
+    return 0;
+  a = lasta ();
+  a->next = malloc (sizeof(action));
+  a = a->next;
   a->name = name;
   a->exec = f;
-  printf("%s: Added action %s\n", conf->execname, name);
+  a->next = NULL;
+  printf("%s ", name);
+
   return 1;
 }
 
-/* int */
-/* action_delete(char *name) */
-/* { */
-/* } */
-
-/* should load `name` from filesystem, call load(), add to list */
 int
-plugin_load(char *name)
+plugin_load(char *path)
 {
-  void *loc;
-  char *msg;
-  plugin *p, *n;
+  plugin *p;
+  void *l;
+  void (*load)( int (*)(char *, void (*)(message * msg, command * cmd)) );
+  void (*unload)( int (*)(char *) );
   void (*setconf)(settings *);
 
-  loc = dlopen(name, RTLD_NOW);
-  if (!loc)
+  if (findp(path, 1, 0) != NULL)
+    return 0;
+  
+  l = dlopen(path, RTLD_NOW);
+  if (l == NULL)
+    return 0;
+
+  unload = dlsym(l, "unload");
+  setconf = dlsym(l, "setconf");
+  load = dlsym(l, "load");
+  if (unload == NULL || setconf == NULL || load == NULL)
     {
-      msg = dlerror();
-      if(msg != NULL)
-	goto onerror;
+      printf("%s: Bad plugin '%s'\n", conf->execname, path);
+      dlclose(l);
+      return 0;
     }
-  if(p_root == NULL)
+
+  p = lastp();
+  if ( p == NULL)
     {
-      p_root = malloc (sizeof (plugin));
-      p = p_root;
-      p->next = NULL;
+      p = malloc(sizeof(plugin));
+      p_root = p;
     }
   else
     {
-      for(n = p_root; n->next != NULL; n = (plugin *) n->next);
-      n->next = (struct plugin *) malloc (sizeof (plugin));
-      p = (plugin *) n->next;
-      p->next = NULL;
+      p->next = malloc(sizeof(plugin));
+      p = p->next;
     }
+  p->name = strdup (strrchr (path, '/') + 1);
+  p->loc = l;
+  p->unload = unload;
   
-  p->name = name;
-  p->location = loc;
-  p->load = dlsym(loc, "load");
-  p->unload = dlsym(loc, "unload");
-  setconf = dlsym(loc, "setconf");
-  msg = dlerror();
-  if (msg != NULL)
-    {
-      free(p);
-      p = NULL;
-      printf("%s: Bad plugin '%s'\n", conf->execname, name);
-      goto onerror;
-    }
   setconf(conf);
-  p->load(&action_add);
+  printf("%s: Loading plugin '%s' with following actions: ", conf->execname, p->name);
+  load(&action_add);
+  printf("...done\n");
+  p->next = NULL;
   return 1;
-  
- onerror:
-  dlclose(loc);
-  return 0;
 }
 
-/* call unload(), remove from list, actually unload */
-/* int */
-/* plugin_unload(char *name) */
-/* { */
-/* } */
+int
+action_delete(char *name)
+{
+  action *a, *p;
+
+  a = finda(name, 1);
+  if (a == NULL)
+    return 0;
+  p = a->next;
+  a->next = p->next;
+  printf("%s ", name);
+  return 1;
+}
+
+int
+plugin_unload(char *name)
+{
+  plugin *p, *l;
+
+  p = findp(name, 0, 1);
+  if (p != NULL)
+    {
+      l = p->next;
+      printf("%s: Unloading plugin '%s' with following actions: ", conf->execname, l->name);
+      l->unload(&action_delete);
+      printf("...done\n");
+      dlclose(l->loc);
+      p->next = l->next;
+      return 1;
+    }
+  p = findp(name, 0, 0);
+  if (p == NULL)
+    return 0;
+  printf("%s: Unloading plugin '%s' with following actions: ", conf->execname, p->name);
+  p->unload(&action_delete);
+  printf("...done\n");
+  dlclose(p->loc);
+  p_root = p->next;
+  return 1;
+}
+
+/* wrappers for plugin_load() / plugin_unload() */
+void
+plugload (message * msg, command * cmd)
+{
+  msg = NULL;
+  plugin_load(cmd->params);
+}
+
+void
+pluguload (message * msg, command * cmd)
+{
+  msg = NULL;
+  plugin_unload(cmd->params);
+}
+
+void
+plugins_init(void)
+{
+  action *a;
+  a_root = malloc (sizeof (action));
+
+  a_root->name = "plugload";
+  a_root->exec = &plugload;
+  a_root->next = a = malloc (sizeof (action));
+  a->name = "pluguload";
+  a->exec = &pluguload;
+  a->next = NULL;
+}
+    

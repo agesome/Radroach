@@ -1,6 +1,6 @@
 /* Radroach is a simple IRC bot
    Copyright © 2009  Evgeny Grablyk <evgeny.grablyk@gmail.com>
-   
+
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
@@ -298,28 +298,23 @@ execute (message * msg, command * cmd)
 {
   action *a;
 
-  if (checkrights (msg))
+  a = finda(cmd->action, 0);
+  if (checkrights (msg) && a != NULL)
     {
-      for(a = a_root; a != NULL; a = a->next)
-	if (strstr (a->name, cmd->action))
-	  {
-	    printf ("%s: Accepted command from %s (%s@%s)\n", conf->execname,
-		    msg->sender, msg->ident, msg->host);
-	    printf ("%s: Executing command '%s' with parameters: '%s'\n",
-		    conf->execname, a->name, cmd->params);
-	    a->exec (msg, cmd);
-	    break;
-	  }
-	else if (a->next == NULL)
-	  {
-	    printf ("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
-		    conf->execname, cmd->action, cmd->params);
-	    break;
-	  }
-    }  
+      printf ("%s: Accepted command from %s (%s@%s)\n", conf->execname,
+	      msg->sender, msg->ident, msg->host);
+      printf ("%s: Executing command '%s' with parameters: '%s'\n",
+	      conf->execname, a->name, cmd->params);
+      a->exec (msg, cmd);
+    }
+  else if (a == NULL)
+    {
+      printf ("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
+	      conf->execname, cmd->action, cmd->params);
+    }
   else
-    printf ("%s: %s (%s@%s) is not trusted!\n",
-	    conf->execname, msg->sender, msg->ident, msg->host);
+    printf("%s: Untrusted user %s (%s@%s) tried to execute command %s, ignored\n",
+	   conf->execname, msg->sender, msg->ident, msg->host, cmd->action);
   
   free (cmd);
   msgfree (msg);
@@ -386,13 +381,10 @@ main (int argc, char *argv[])
   command *ccmd = NULL;
 
   printf("%s: This is Radroach commit %s\n", argv[0], COMMIT);
-
   if (!configure (argc, argv))
     exit (EXIT_FAILURE);
   conf->action_trigger = '`'; 	/* default trigger char */
-  
-  plugin_load("./basic_actions.so");
-  
+  plugins_init ();
   sconnect (conf->host);
 
   while ((l = sogetline (conf->sock)) != NULL)

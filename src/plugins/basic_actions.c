@@ -131,7 +131,7 @@ f_trigger (message * msg, command * cmd)
 }
 
 void
-load ( int (*action_add)(char *, void (*)(message *, command *)) )
+load (int (*action_add)(char *, void (*)(message *, command *)) )
 {
   action_add("join", &f_join);
   action_add("you", &f_me);
@@ -142,8 +142,14 @@ load ( int (*action_add)(char *, void (*)(message *, command *)) )
 }
 
 void
-unload(void)
+unload (int (*action_delete)(char *))
 {
+  action_delete("join");
+  action_delete("you");
+  action_delete("leave");
+  action_delete("say");
+  action_delete("trigger");
+  action_delete("reply");
 }
 
 void
