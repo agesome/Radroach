@@ -46,35 +46,35 @@ sogetline (int s)
     {
       /* ordinary read */
       if (r)
-  	buf[i++] = c;
+	buf[i++] = c;
       /* all done, reallocate and return */
       /* string is less than our buffer, reallocate. */
       if (c == '\n' && i < bsz)
-  	{
-  	  buf[i] = '\0';
-  	  rebuf = malloc (strlen (buf) + 1);
-  	  strcpy (rebuf, buf);
-  	  free (buf);
-  	  return rebuf;
-  	}
+	{
+	  buf[i] = '\0';
+	  rebuf = malloc (strlen (buf) + 1);
+	  strcpy (rebuf, buf);
+	  free (buf);
+	  return rebuf;
+	}
       else if (c == '\n' && i == bsz)
-  	{
-  	  buf[i - 1] = '\0';
-  	  return buf;
-  	}
+	{
+	  buf[i - 1] = '\0';
+	  return buf;
+	}
       /* we've reached buffer limit, reallocate with more space */
       if (i >= bsz)
-  	{
-  	  rebuf = malloc (i + BUFSZ);
-  	  memcpy (rebuf, buf, i);
-  	  free (buf);
-  	  buf = rebuf;
-  	  bsz += BUFSZ;
-  	}
+	{
+	  rebuf = malloc (i + BUFSZ);
+	  memcpy (rebuf, buf, i);
+	  free (buf);
+	  buf = rebuf;
+	  bsz += BUFSZ;
+	}
     }
   /* something failed and we did not return a sting earlier */
   return NULL;
-  
+
 }
 
 /* free(), but for `message` */
@@ -204,9 +204,9 @@ parsecmd (char *l)
     {
       command *result = malloc (sizeof (command));
       result->action = &l[1];
-      
-      l = strchr (l, ' ');       /* if there is a space after command name, we may expect parameters */
-      if (l != NULL )
+
+      l = strchr (l, ' ');	/* if there is a space after command name, we may expect parameters */
+      if (l != NULL)
 	{
 	  *l = '\0';
 	  l++;
@@ -298,7 +298,7 @@ execute (message * msg, command * cmd)
 {
   action *a;
 
-  a = finda(cmd->action, 0);
+  a = finda (cmd->action, 0);
   if (checkrights (msg) && a != NULL)
     {
       printf ("%s: Accepted command from %s (%s@%s)\n", conf->execname,
@@ -309,13 +309,15 @@ execute (message * msg, command * cmd)
     }
   else if (a == NULL)
     {
-      printf ("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
-	      conf->execname, cmd->action, cmd->params);
+      printf
+	("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
+	 conf->execname, cmd->action, cmd->params);
     }
   else
-    printf("%s: Untrusted user %s (%s@%s) tried to execute command %s, ignored\n",
-	   conf->execname, msg->sender, msg->ident, msg->host, cmd->action);
-  
+    printf
+      ("%s: Untrusted user %s (%s@%s) tried to execute command %s, ignored\n",
+       conf->execname, msg->sender, msg->ident, msg->host, cmd->action);
+
   free (cmd);
   msgfree (msg);
 }
@@ -327,7 +329,7 @@ configure (int argc, char *argv[])
   char *cfile = NULL;
   int opt;
   conf = (settings *) malloc (sizeof (settings));
-  
+
   if (argc < 2)
     {
       p_help ();
@@ -380,10 +382,10 @@ main (int argc, char *argv[])
   message *cmsg = NULL;
   command *ccmd = NULL;
 
-  printf("%s: This is Radroach commit %s\n", argv[0], COMMIT);
+  printf ("%s: This is Radroach commit %s\n", argv[0], COMMIT);
   if (!configure (argc, argv))
     exit (EXIT_FAILURE);
-  conf->action_trigger = '`'; 	/* default trigger char */
+  conf->action_trigger = '=';	/* default trigger char */
   plugins_init ();
   sconnect (conf->host);
 

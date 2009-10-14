@@ -35,7 +35,7 @@ f_reply (message * msg, command * cmd)
   else
     {
       s = malloc (strlen ("PRIVMSG  :\n") + strlen (msg->dest) +
-			 strlen (cmd->params) + 2);
+		  strlen (cmd->params) + 2);
       sprintf (s, "PRIVMSG %s :%s\n", msg->dest, cmd->params);
       raw (s);
     }
@@ -100,7 +100,9 @@ f_say (message * msg, command * cmd)
   tmessage = strchr (cmd->params, ' ') + 1;
   *(tmessage - 1) = '\0';
 
-  s = malloc (strlen ("PRIVMSG  :\n") + strlen (target) + strlen (tmessage) + 1);
+  s =
+    malloc (strlen ("PRIVMSG  :\n") + strlen (target) + strlen (tmessage) +
+	    1);
   sprintf (s, "PRIVMSG %s :%s\n", target, tmessage);
   raw (s);
 
@@ -115,45 +117,52 @@ f_trigger (message * msg, command * cmd)
   char *s;
   if (strstr (msg->dest, conf->nick) != NULL)
     {
-      s = malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
-		  strlen (cmd->params) + 1);
-      sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->sender, cmd->params[0]);
+      s =
+	malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") +
+		strlen (msg->sender) + strlen (cmd->params) + 1);
+      sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->sender,
+	       cmd->params[0]);
       raw (s);
     }
   else
     {
-      s = malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") + strlen (msg->sender) +
-			 strlen (cmd->params) + 1);
-      sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->dest, cmd->params[0]);
+      s =
+	malloc (strlen ("PRIVMSG  :Trigger character is now ' '\n") +
+		strlen (msg->sender) + strlen (cmd->params) + 1);
+      sprintf (s, "PRIVMSG %s :Trigger character is now '%c'\n", msg->dest,
+	       cmd->params[0]);
       raw (s);
     }
   free (s);
 }
 
+/* called on plugin load, you should manually add all actions here */
 void
-load (int (*action_add)(char *, void (*)(message *, command *)) )
+load (int (*action_add) (char *, void (*)(message *, command *)))
 {
-  action_add("join", &f_join);
-  action_add("you", &f_me);
-  action_add("leave", &f_part);
-  action_add("say", &f_say);
-  action_add("trigger", &f_trigger);
-  action_add("reply", &f_reply);
+  action_add ("join", &f_join);
+  action_add ("you", &f_me);
+  action_add ("leave", &f_part);
+  action_add ("say", &f_say);
+  action_add ("trigger", &f_trigger);
+  action_add ("reply", &f_reply);
 }
 
+/* called on unload, remove actions here */
 void
-unload (int (*action_delete)(char *))
+unload (int (*action_delete) (char *))
 {
-  action_delete("join");
-  action_delete("you");
-  action_delete("leave");
-  action_delete("say");
-  action_delete("trigger");
-  action_delete("reply");
+  action_delete ("join");
+  action_delete ("you");
+  action_delete ("leave");
+  action_delete ("say");
+  action_delete ("trigger");
+  action_delete ("reply");
 }
 
+/* called on load with global bot's configuration variable as parameter */
 void
-setconf(settings *c)
+setconf (settings * c)
 {
   conf = c;
 }
