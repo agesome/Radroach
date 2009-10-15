@@ -18,22 +18,24 @@
 #define BUFSZ 10
 
 char inbuf[BUFSZ];
-/* Non-negative value indicates that setup is already done. ( setup() called) */
+/*! \brief Non-negative value indicates that setup is already done. ( setup() called) */
 int setup_done = 0;
-/* Refers global configuration structure. */
+/*! \brief Refers to global configuration structure. */
 settings *conf = NULL;
 
 #include "util.c"
 #include "plugins.c"
 
-/* prints short usage instructions */
+/*! \brief Print short usage instructions. */
 void
 p_help (void)
 {
   printf ("Usage: %s [-h] -c confile\n", conf->execname);
 }
 
-/* returns a line from irc server */
+/*! \brief Returns a line from irc server.
+  @param s socket to read from
+  @return a line recieved from server, without the '\\r\\n' in the end */
 /* FIXME: store everything in a buffer, give out lines */
 char *
 sogetline (int s)
@@ -77,7 +79,8 @@ sogetline (int s)
 
 }
 
-/* free(), but for `message` */
+/*! \brief free(), but for message struct.
+ @param msg pointer to message to be freed */
 void
 msgfree (message * msg)
 {
@@ -85,7 +88,8 @@ msgfree (message * msg)
   free (msg);
 }
 
-/* connects to server `host` */
+/*! \brief Perform connection to server.
+  @param host the host to connect to */
 void
 sconnect (char *host)
 {
@@ -131,7 +135,7 @@ err:
   exit (EXIT_FAILURE);
 }
 
-/* things to be done once we have connected to server */
+/*! \brief Performs after-connection actions. */
 void
 setup (void)
 {
@@ -157,7 +161,9 @@ setup (void)
   free (l);
 }
 
-/* parse a string, return message containing that string's data */
+/*! \brief Parses a string, returns message containing that string's data.
+ @param l the string to be parsed
+ @return message struct with all the data that input string contained */
 message *
 parsemsg (char *l)
 {
@@ -196,7 +202,9 @@ parsemsg (char *l)
   return NULL;
 }
 
-/* parse a string, return a command containing apropriate data */
+/*! \brief Parses a string, returns command containing string's data.
+ @param l string to be parsed
+ @return struct with strting's data */
 command *
 parsecmd (char *l)
 {
@@ -222,7 +230,9 @@ parsecmd (char *l)
   return NULL;
 }
 
-/* check if `l` contains a ping request, serve it if it does */
+/*! \brief Checks if there's a ping request, replies if there is. Additionally calls setup().
+  @param l the string to be checked
+  @return 1 if there was a ping request, 0 if there wasn't */
 int
 p_response (char *l)
 {
@@ -241,7 +251,9 @@ p_response (char *l)
   return 0;
 }
 
-/* parse configuration file `cfile` */
+/*! \brief Parses a configuration file.
+  @param cfile path to the file
+  @return positive on succesful parse */
 int
 parsecfg (char *cfile)
 {
@@ -274,7 +286,9 @@ parsecfg (char *cfile)
   return 0;
 }
 
-/* check if message is from a trusted source */
+/*! \brief Checks if message is from a trusted source.
+  @param msg the message to check
+  @return positive if the source is trusted, zero otherwise */
 int
 checkrights (message * msg)
 {
@@ -292,7 +306,9 @@ checkrights (message * msg)
   return 0;
 }
 
-/* execute apropriate function as `cmd` specifies */
+/*! \brief Executes apropriate function as parameters specify.
+ @param msg message with request data
+ @param cmd command with command name and parameters */
 void
 execute (message * msg, command * cmd)
 {
@@ -322,7 +338,8 @@ execute (message * msg, command * cmd)
   msgfree (msg);
 }
 
-/* parse commandline arguments */
+/*! \brief Parses commandline arguments.
+  @return positive on successful parse */
 int
 configure (int argc, char *argv[])
 {
