@@ -31,22 +31,15 @@
 typedef struct message
 {
   char *sender, *ident, *host, *dest, *msg, *raw;
-} message;
+} message_t;
 
 typedef struct command
 {
   char *action, *params;
-} command;
-
-typedef struct action
-{
-  char *name;
-  void (*exec) (message *, command *);
-  struct action *next;
-} action;
+} command_t;
 
 typedef struct settings
 {
   char *nick, *name, *host, *trusted, *password, action_trigger, *execname;
   int sock;
-} settings;
+} settings_t;

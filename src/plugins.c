@@ -14,45 +14,38 @@
    along with Radroach.  If not, see <http://www.gnu.org/licenses/>. */
 
 /* implements support for loadable plugins */
+#include <dirent.h>
+
+extern settings_t *settings;
+
 
 typedef struct plugin
 {
   char *name, *path;
-  void *loc;
-  void (*unload) (int (*)(char *));
+  void *location;
+  void (*execute) (message_t *, command_t *);
   struct plugin *next;
-} plugin;
+} plugin_t;
 
-plugin *p_root = NULL;
-action *a_root = NULL;
+plugin_t *p_root = NULL;
 
-plugin *
+plugin_t *
 lastp (void)
 {
-  plugin *p = p_root;
+  plugin_t *p = p_root;
 
   while (p != NULL && p->next != NULL)
     p = p->next;
   return p;
 }
 
-action *
-lasta (void)
-{
-  action *a = a_root;
-
-  while (a->next != NULL)
-    a = a->next;
-  return a;
-}
-
 /* find plugin under name `name`, if `ispath` is set - compare with plugin's
    path, not it's name; if `retnext` is set, return plugin that is right before
    the one we're looking for */
-plugin *
-findp (char *name, int ispath, int retnext)
+plugin_t *
+plugin_find (char *name, int ispath, int retnext)
 {
-  plugin *p = p_root, *l;
+  plugin_t *p = p_root, *l = NULL;
   char *r = NULL;
 
   while (p != NULL)
@@ -76,165 +69,93 @@ findp (char *name, int ispath, int retnext)
   return NULL;
 }
 
-/* find action `name`; if `retnext` is set, return action that is right before
-   the one we're looking for */
-action *
-finda (char *name, int retnext)
-{
-  action *a = a_root;
-  char *r = NULL;
-
-  while (a != NULL)
-    {
-      if (a->next != NULL && retnext)
-	r = strstr ((a->next)->name, name);
-      else if (!retnext)
-	r = strstr (a->name, name);
-      if (r != NULL)
-	return a;
-      a = a->next;
-    }
-  return NULL;
-}
-
-/* add action `name`, with execution function `exec` */
-int
-action_add (char *name, void (*exec) (message * msg, command * cmd))
-{
-  action *a;
-
-  if (finda (name, 0) != NULL)
-    return 0;
-  a = lasta ();
-  a->next = malloc (sizeof (action));
-  a = a->next;
-  a->name = name;
-  a->exec = exec;
-  a->next = NULL;
-  printf ("%s ", name);
-
-  return 1;
-}
-
 /* load a plugin from `path` */
 int
 plugin_load (char *path)
 {
-  plugin *p;
+  plugin_t *p;
   void *l;
-  void (*load) (int (*)(char *, void (*)(message * msg, command * cmd)));
-  void (*unload) (int (*)(char *));
-  void (*setconf) (settings *);
+  void (*execute) (message_t *, command_t *);
 
-  if (findp (path, 1, 0) != NULL)
+  if (plugin_find (path, 1, 0) != NULL)
     return 0;
-
   l = dlopen (path, RTLD_NOW);
   if (l == NULL)
     return 0;
-
-  unload = dlsym (l, "unload");
-  setconf = dlsym (l, "setconf");
-  load = dlsym (l, "load");
-  if (unload == NULL || setconf == NULL || load == NULL)
-    {
-      printf ("%s: Bad plugin '%s'\n", conf->execname, path);
-      dlclose (l);
-      return 0;
-    }
-
+  execute = dlsym(l, "execute");
+  if (execute == NULL)
+    return 0;
   p = lastp ();
   if (p == NULL)
     {
-      p = malloc (sizeof (plugin));
+      p = malloc (sizeof (plugin_t));
       p_root = p;
     }
   else
     {
-      p->next = malloc (sizeof (plugin));
+      p->next = malloc (sizeof (plugin_t));
       p = p->next;
     }
-  p->name = strdup (strrchr (path, '/') + 1);
-  p->loc = l;
-  p->unload = unload;
-
-  setconf (conf);
-  printf ("%s: Loading plugin '%s' with following actions: ", conf->execname,
-	  p->name);
-  load (&action_add);
-  printf ("...done\n");
+  /* strip off the path and .so extension */
+  p->name = malloc ( (strlen (path) - 3) + (strrchr (path, '/') + 1 - path));
+  strncpy (p->name, strrchr (path, '/') + 1, sizeof (p->name));
+  p->location = l;
+  p->execute = execute;
   p->next = NULL;
+  printf ("%s: Loaded plugin '%s'\n", settings->execname, p->name);
+  
   return 1;
 }
 
-int
-action_delete (char *name)
+void
+plugins_init (char *plugindir)
 {
-  action *a, *p;
+  DIR *pd;
+  struct dirent *file;
+  char *p;
+  int pathlen;
 
-  a = finda (name, 1);
-  if (a == NULL)
-    return 0;
-  p = a->next;
-  a->next = p->next;
-  printf ("%s ", name);
-  return 1;
-}
+  pd = opendir (plugindir);
 
-int
-plugin_unload (char *name)
-{
-  plugin *p, *l;
-
-  p = findp (name, 0, 1);
-  if (p != NULL)
+  while ( (file = readdir (pd)) )
     {
-      l = p->next;
-      printf ("%s: Unloading plugin '%s' with following actions: ",
-	      conf->execname, l->name);
-      l->unload (&action_delete);
-      printf ("...done\n");
-      dlclose (l->loc);
-      p->next = l->next;
-      return 1;
-    }
-  p = findp (name, 0, 0);
-  if (p == NULL)
-    return 0;
-  printf ("%s: Unloading plugin '%s' with following actions: ",
-	  conf->execname, p->name);
-  p->unload (&action_delete);
-  printf ("...done\n");
-  dlclose (p->loc);
-  p_root = p->next;
-  return 1;
+      if (strstr (file->d_name, ".so") != NULL)
+	{
+	  pathlen = strlen (plugindir) + strlen (file->d_name) + 1;
+	  p = malloc (pathlen);
+	  memset (p, 0, pathlen);
+	  strcat (p, plugindir);
+	  strcat (p, file->d_name);
+	  plugin_load (p);
+	}
+    }  
 }
 
-/* wrappers for plugin_load() / plugin_unload() */
-void
-plugload (message * msg, command * cmd)
-{
-  msg = NULL;
-  plugin_load (cmd->params);
-}
+/* int */
+/* plugin_unload (char *name) */
+/* { */
+/*   plugin *p, *l; */
 
-void
-pluguload (message * msg, command * cmd)
-{
-  msg = NULL;
-  plugin_unload (cmd->params);
-}
-
-void
-plugins_init (void)
-{
-  action *a;
-  a_root = malloc (sizeof (action));
-
-  a_root->name = "plugload";
-  a_root->exec = &plugload;
-  a_root->next = a = malloc (sizeof (action));
-  a->name = "pluguload";
-  a->exec = &pluguload;
-  a->next = NULL;
-}
+/*   p = plugin_find (name, 0, 1); */
+/*   if (p != NULL) */
+/*     { */
+/*       l = p->next; */
+/*       printf ("%s: Unloading plugin '%s' with following actions: ", */
+/* 	      conf->execname, l->name); */
+/*       l->unload (&action_delete); */
+/*       printf ("...done\n"); */
+/*       dlclose (l->loc); */
+/*       p->next = l->next; */
+/*       return 1; */
+/*     } */
+/*   p = plugin_find (name, 0, 0); */
+/*   if (p == NULL) */
+/*     return 0; */
+/*   printf ("%s: Unloading plugin '%s' with following actions: ", */
+/* 	  conf->execname, p->name); */
+/*   p->unload (&action_delete); */
+/*   printf ("...done\n"); */
+/*   dlclose (p->loc); */
+/*   p_root = p->next; */
+/*   return 1; */
+/* } */
