@@ -76,6 +76,7 @@ plugin_load (char *path)
   plugin_t *p;
   void *l;
   void (*execute) (message_t *, command_t *);
+  int namelen;
 
   if (plugin_find (path, 1, 0) != NULL)
     return 0;
@@ -97,8 +98,10 @@ plugin_load (char *path)
       p = p->next;
     }
   /* strip off the path and .so extension */
-  p->name = malloc ( (strlen (path) - 3) + (strrchr (path, '/') + 1 - path));
-  strncpy (p->name, strrchr (path, '/') + 1, sizeof (p->name));
+  namelen = strrchr (path, '.') - strrchr (path, '/');
+  p->name = malloc (namelen);
+  strncpy (p->name, strrchr (path, '/') + 1, namelen - 1);
+  p->name[namelen - 1] = '\0';
   p->location = l;
   p->execute = execute;
   p->next = NULL;
