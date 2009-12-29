@@ -15,57 +15,29 @@
 
 /* implements support for loadable plugins */
 #include <dirent.h>
+#define MAX_PLUGINS 256
 
 extern settings_t *settings;
-
 
 typedef struct plugin
 {
   char *name, *path;
   void *location;
   void (*execute) (message_t *, command_t *);
-  struct plugin *next;
 } plugin_t;
 
-plugin_t *p_root = NULL;
+plugin_t *plugins[MAX_PLUGINS];
+unsigned int plugin_count = 0;
 
+/* find plugin under name `name` */
 plugin_t *
-lastp (void)
+plugin_find (char *name)
 {
-  plugin_t *p = p_root;
+  unsigned int i;
 
-  while (p != NULL && p->next != NULL)
-    p = p->next;
-  return p;
-}
-
-/* find plugin under name `name`, if `ispath` is set - compare with plugin's
-   path, not it's name; if `retnext` is set, return plugin that is right before
-   the one we're looking for */
-plugin_t *
-plugin_find (char *name, int ispath, int retnext)
-{
-  plugin_t *p = p_root, *l = NULL;
-  char *r = NULL;
-
-  while (p != NULL)
-    {
-      if (retnext && p->next != NULL)
-	{
-	  l = p;
-	  p = p->next;
-	}
-      else if (retnext)
-	return 0;
-
-      if (ispath)
-	r = strstr (p->path, name);
-      else
-	r = strstr (p->name, name);
-      if (r != NULL)
-	return p;
-      p = l->next;
-    }
+  for (i = 0; i < plugin_count; i++)
+    if (strstr (plugins[i]->name, name))
+      return plugins[i];
   return NULL;
 }
 
@@ -74,40 +46,41 @@ int
 plugin_load (char *path)
 {
   plugin_t *p;
-  void *l;
+  void *location;
   void (*execute) (message_t *, command_t *);
   int namelen;
-
-  if (plugin_find (path, 1, 0) != NULL)
-    return 0;
-  l = dlopen (path, RTLD_NOW);
-  if (l == NULL)
-    return 0;
-  execute = dlsym(l, "execute");
-  if (execute == NULL)
-    return 0;
-  p = lastp ();
-  if (p == NULL)
-    {
-      p = malloc (sizeof (plugin_t));
-      p_root = p;
-    }
-  else
-    {
-      p->next = malloc (sizeof (plugin_t));
-      p = p->next;
-    }
+  char *name;
+  
   /* strip off the path and .so extension */
   namelen = strrchr (path, '.') - strrchr (path, '/');
-  p->name = malloc (namelen);
-  strncpy (p->name, strrchr (path, '/') + 1, namelen - 1);
-  p->name[namelen - 1] = '\0';
-  p->location = l;
+  name = malloc (namelen);
+  strncpy (name, strrchr (path, '/') + 1, namelen - 1);
+  name[namelen - 1] = '\0';
+  
+  if (plugin_find (name) != NULL)
+    goto error;
+  location = dlopen (path, RTLD_NOW);
+  if (location == NULL)
+    goto error;
+  execute = dlsym(location, "execute");
+  if (execute == NULL)
+    {
+      dlclose (location);
+      goto error;
+    }
+  p = plugins[plugin_count] = malloc (sizeof (plugin_t));
+  plugin_count++;
+  p->location = location;
   p->execute = execute;
-  p->next = NULL;
+  p->name = name;
+  p->path = path;
   printf ("%s: Loaded plugin '%s'\n", settings->execname, p->name);
   
   return 1;
+
+ error:
+  free (name);
+  return 0;    
 }
 
 void
@@ -118,8 +91,9 @@ plugins_init (char *plugindir)
   char *p;
   int pathlen;
 
+  /* memset (plugins[0], 0, MAX_PLUGINS); */
+  
   pd = opendir (plugindir);
-
   while ( (file = readdir (pd)) )
     {
       if (strstr (file->d_name, ".so") != NULL)

@@ -19,7 +19,3 @@ radroach: $(radroach)
 
 clean:
 	rm -f *.o
-
-plugins: $(PFILES)
-	$(CC) -fPIC -c "$(PFILES).c"
-	$(CC) -shared -o "$(PFILES).so" "$(PFILES).o"

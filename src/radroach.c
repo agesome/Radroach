@@ -327,7 +327,7 @@ execute (message_t * msg, command_t * cmd)
 {
   plugin_t *a;
 
-  a = plugin_find (cmd->action, 0, 0);
+  a = plugin_find (cmd->action);
   if (checkrights (msg) && a != NULL)
     {
       printf ("%s: Accepted command from %s (%s@%s)\n", settings->execname,
