@@ -390,11 +390,11 @@ configure (int argc, char *argv[])
 
   if (cfile == NULL)
     {
-      error (0, 0, "No settingsiguration file specified.");
+      error (0, 0, "No confguration file specified.");
       return 0;
     }
 
-  printf ("%s: Settingsiguration file selected: %s\n", settings->execname, cfile);
+  printf ("%s: Configuration file selected: %s\n", settings->execname, cfile);
 
   if (!parsecfg (cfile))
     {
