@@ -19,10 +19,10 @@
 #define BUFSZ 10
 
 char inbuf[BUFSZ];
-/*! \brief Non-negative value indicates that setup is already done. ( setup() called) */
-int setup_done = 0;
 /*! \brief Refers to global settingsiguration structure. */
 settings_t *settings = NULL;
+
+void setup (void);
 
 void
 logstr (char *str)
@@ -119,7 +119,6 @@ sconnect (char *host)
       error (0, 0, "Socket creation failed.\n");
       goto err;
     }
-  logstr ("Socket created.\n");
   if ((st = getaddrinfo (host, "ircd", &hints, &server)) != 0)
     {
       error (0, 0, "Failed to resolve hostname: %s", gai_strerror (st));
@@ -138,7 +137,7 @@ sconnect (char *host)
   /* inbuf is not used yet, don't scream. */
   sprintf (inbuf, "NICK %s\n", settings->nick);
   raw (inbuf);
-
+  setup ();
   return;
 
 err:
@@ -155,9 +154,9 @@ setup (void)
   if (settings->name)
     {
       l =
-	malloc (strlen ("USER  localhost  :\n") + strlen (settings->name) +
-		strlen (settings->nick) + strlen (settings->host) + 1);
-      sprintf (l, "USER %s localhost %s :%s\n", settings->nick, settings->host,
+	malloc (strlen ("USER  * * :\n") + strlen (settings->name) +
+		strlen (settings->nick) + 1);
+      sprintf (l, "USER %s * * :%s\n", settings->nick,
 	       settings->name);
       raw (l);
     }
@@ -253,11 +252,6 @@ p_response (char *l)
       memcpy (l, "PONG", 4);
       raw (l);
       free (l);
-      if (setup_done == 0)
-	{
-	  setup ();
-	  setup_done = 1;
-	}
       return 1;
     }
   return 0;
@@ -291,7 +285,6 @@ parsecfg (char *cfile)
   cfg = cfg_init (opts, 0);
   status = cfg_parse (cfg, cfile);
   printf ("%s: Trusted users are: %s\n", settings->execname, settings->trusted);
-  /* printf("%s %s %s %s\n", settings->nick, settings->name, settings->host, settings->password); */
   /* check for necessary settings */
   if (status == CFG_SUCCESS && settings->nick != NULL && settings->host != NULL)
     return 1;
