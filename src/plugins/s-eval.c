@@ -1,6 +1,7 @@
 #include "plugins.h"
 #include <libguile.h>
 
+
 int eerror = 0;
 SCM scm, scm_result;
 char *result;
@@ -13,6 +14,27 @@ scm_reply (SCM str)
   
   return SCM_BOOL_T;
 }
+
+SCM
+scm_say (SCM target, SCM str)
+{
+  char *dest, *msg, *l;
+
+  /* FIXME: segfaults on free */
+  /* scm_dynwind_begin (0); */
+  dest = scm_to_locale_string (target);
+  msg = scm_to_locale_string (str);
+  l = malloc (strlen (dest) + strlen(msg) + strlen ("PRIVMSG  :\n") + 1);
+  sprintf (l, "PRIVMSG %s :%s\n", dest, msg);
+  raw (l);
+  free (l);
+  /* scm_dynwind_free (msg); */
+  /* scm_dynwind_free (dest); */
+  /* scm_dynwind_end (); */
+
+  return SCM_BOOL_T;
+}
+
 
 void
 exec_error (message_t *msg)
@@ -51,4 +73,5 @@ s_eval_initialize (void)
   scm_primitive_load (scm_from_locale_string ("./src/plugins/s-eval.scm"));
 
   gh_new_procedure ("reply", scm_reply, 1, 0, 0);
+  gh_new_procedure ("say", scm_say, 2, 0, 0);  
 }
