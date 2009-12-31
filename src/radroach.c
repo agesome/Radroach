@@ -16,6 +16,8 @@
 
 #include <radroach.h>
 #include <plugins.c>
+#include <util.c>
+
 #define BUFSZ 10
 
 char inbuf[BUFSZ];
@@ -23,49 +25,6 @@ char inbuf[BUFSZ];
 settings_t *settings = NULL;
 
 void setup (void);
-
-void
-reply (message_t *msg, char *reply)
-{
-  char *s;
-  
-  if (strstr (msg->dest, settings->nick) != NULL)
-    {
-      s = malloc (strlen ("PRIVMSG  :\n") + strlen (msg->sender) +
-		  strlen (reply) + 2);
-      sprintf (s, "PRIVMSG %s :%s\n", msg->sender, reply);
-      raw (s);
-    }
-  else
-    {
-      s = malloc (strlen ("PRIVMSG  :\n") + strlen (msg->dest) +
-		  strlen (reply) + strlen(msg->sender) + 2);
-      sprintf (s, "PRIVMSG %s :%s: %s\n", msg->dest, msg->sender, reply);
-      raw (s);
-    }
-  free (s);
-}
-
-void
-logstr (char *str)
-{
-  printf ("%s: %s", settings->execname, str);
-}
-
-/* sends raw string `str` via global socket `sock` */
-void
-raw (char *str)
-{
-  logstr (str);
-  write (settings->sock, str, strlen (str));
-}
-
-/*! \brief Print short usage instructions. */
-void
-p_help (void)
-{
-  printf ("Usage: %s [-h] -c settingsile\n", settings->execname);
-}
 
 /*! \brief Returns a line from irc server.
   @param s socket to read from
