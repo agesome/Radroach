@@ -3,4 +3,5 @@
 extern settings_t *settings;
 
 extern void logstr (char *str);
-void raw (char *str);
+extern void raw (char *str);
+extern void reply (message_t *msg, char *reply);
