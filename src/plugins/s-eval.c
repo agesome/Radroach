@@ -35,14 +35,12 @@ scm_say (SCM target, SCM str)
   return SCM_BOOL_T;
 }
 
-
+/* error handler */
 void
 exec_error (message_t *msg)
 {  
   eerror = 1;
   reply (msg, "Error :(");
-  
-  return;
 }
 
 void

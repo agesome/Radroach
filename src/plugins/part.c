@@ -4,6 +4,7 @@ void
 execute (message_t * msg, command_t * cmd)
 {
   cmd = NULL;
+  /* send out PART only if we're in a channel */
   if (strstr (msg->dest, settings->nick) == NULL)
     {
       char *s;

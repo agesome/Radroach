@@ -16,6 +16,7 @@
 
 void raw (char *str);
 
+/* reply either to a channel or to a person */
 void
 reply (message_t *msg, char *reply)
 {
@@ -52,7 +53,7 @@ raw (char *str)
   write (settings->sock, str, strlen (str));
 }
 
-/*! \brief Print short usage instructions. */
+/*  Print short usage instructions. */
 void
 p_help (void)
 {

@@ -21,14 +21,12 @@
 #define BUFSZ 10
 
 char inbuf[BUFSZ];
-/*! \brief Refers to global settingsiguration structure. */
+/* Refers to global configuration structure. */
 settings_t *settings = NULL;
 
 void setup (void);
 
-/*! \brief Returns a line from irc server.
-  @param s socket to read from
-  @return a line recieved from server, without the '\\r\\n' in the end */
+/* Returns a line from irc server. */
 /* FIXME: store everything in a buffer, give out lines */
 char *
 sogetline (int s)
@@ -72,8 +70,7 @@ sogetline (int s)
 
 }
 
-/*! \brief free(), but for message struct.
- @param msg pointer to message to be freed */
+/* free(), but for message struct. */
 void
 msgfree (message_t * msg)
 {
@@ -81,8 +78,7 @@ msgfree (message_t * msg)
   free (msg);
 }
 
-/*! \brief Perform connection to server.
-  @param host the host to connect to */
+/* Perform connection to server. */
 void
 sconnect (char *host)
 {
@@ -127,7 +123,7 @@ err:
   exit (EXIT_FAILURE);
 }
 
-/*! \brief Performs after-connection actions. */
+/* Performs after-connection actions. */
 void
 setup (void)
 {
@@ -153,9 +149,7 @@ setup (void)
   free (l);
 }
 
-/*! \brief Parses a string, returns message containing that string's data.
- @param l the string to be parsed
- @return message struct with all the data that input string contained */
+/*  Parses a string, returns message containing that string's data. */
 message_t *
 parsemsg (char *l)
 {
@@ -194,9 +188,7 @@ parsemsg (char *l)
   return NULL;
 }
 
-/*! \brief Parses a string, returns command containing string's data.
- @param l string to be parsed
- @return struct with strting's data */
+/* Parses a string, returns command containing string's data. */
 command_t *
 parsecmd (char *l)
 {
@@ -222,9 +214,7 @@ parsecmd (char *l)
   return NULL;
 }
 
-/*! \brief Checks if there's a ping request, replies if there is. Additionally calls setup().
-  @param l the string to be checked
-  @return 1 if there was a ping request, 0 if there wasn't */
+/* Checks if there's a ping request, replies if there is. Additionally calls setup(). */
 int
 p_response (char *l)
 {
@@ -238,9 +228,7 @@ p_response (char *l)
   return 0;
 }
 
-/*! \brief Parses a settingsiguration file.
-  @param cfile path to the file
-  @return positive on succesful parse */
+/* Parses a settingsiguration file. */
 int
 parsecfg (char *cfile)
 {
@@ -272,13 +260,12 @@ parsecfg (char *cfile)
   return 0;
 }
 
-/*! \brief Checks if message is from a trusted source.
-  @param msg the message to check
-  @return positive if the source is trusted, zero otherwise */
+/* Checks if message is from a trusted source. */
 int
 checkrights (message_t * msg)
 {
   char *l, *s;
+  /* just fix me alrady */
   return 1;
   
   s = malloc (2 + strlen (msg->ident) + strlen (msg->host));
@@ -293,9 +280,7 @@ checkrights (message_t * msg)
   return 0;
 }
 
-/*! \brief Executes apropriate function as parameters specify.
- @param msg message with request data
- @param cmd command with command name and parameters */
+/* Executes apropriate function as parameters specify. */
 void
 execute (message_t * msg, command_t * cmd)
 {
@@ -325,8 +310,7 @@ execute (message_t * msg, command_t * cmd)
   msgfree (msg);
 }
 
-/*! \brief Parses commandline arguments.
-  @return positive on successful parse */
+/* Parses commandline arguments. */
 int
 configure (int argc, char *argv[])
 {
