@@ -389,7 +389,7 @@ main (int argc, char *argv[])
   printf ("%s: This is Radroach commit %s\n", argv[0], COMMIT);
   if (!configure (argc, argv))
     exit (EXIT_FAILURE);
-  settings->action_trigger = '=';	/* default trigger char */
+  settings->action_trigger = '`';	/* default trigger char */
   plugins_init ("./plugins/");
   sconnect (settings->host);
 
