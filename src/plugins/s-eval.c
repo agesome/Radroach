@@ -16,6 +16,15 @@ scm_reply (SCM str)
 }
 
 SCM
+scm_raw (SCM str)
+{
+  raw (scm_to_locale_string (str));
+  raw ("\n");
+  
+  return SCM_BOOL_T;
+}
+
+SCM
 scm_say (SCM target, SCM str)
 {
   char *dest, *msg, *l;
@@ -71,5 +80,13 @@ s_eval_initialize (void)
   scm_primitive_load (scm_from_locale_string ("./src/plugins/s-eval.scm"));
 
   gh_new_procedure ("reply", scm_reply, 1, 0, 0);
-  gh_new_procedure ("say", scm_say, 2, 0, 0);  
+  gh_new_procedure ("say", scm_say, 2, 0, 0);
+  gh_new_procedure ("raw", scm_raw, 1, 0, 0);  
+}
+
+__attribute__((destructor)) void
+s_eval_deinitialize (void)
+{
+  /* scm_c_use_module (""); */
+  /* scm_c_eval_string ("(use-modules (boot-9))"); */
 }

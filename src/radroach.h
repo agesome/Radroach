@@ -43,3 +43,10 @@ typedef struct settings
   char *nick, *name, *host, *trusted, *password, action_trigger, *execname;
   int sock;
 } settings_t;
+
+typedef struct plugin
+{
+  char *name, *path;
+  void *location;
+  void (*execute) (message_t *, command_t *);
+} plugin_t;
