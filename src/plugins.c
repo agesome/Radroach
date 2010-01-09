@@ -41,7 +41,7 @@ plugin_load (char *path)
   plugin_t *p;
   void *location;
   void (*execute) (message_t *, command_t *);
-  int namelen, i;
+  int namelen;
   char *name;
 
   /* strip off the path and .so extension */
@@ -104,8 +104,8 @@ plugins_init (char *plugindir)
 int
 plugin_unload (char *name)
 {
-  plugin_t *p, *l;
-  unsigned int i, inlist;
+  plugin_t *p;
+  unsigned int i;
 
   p = plugin_find (name);
   if (p == NULL)
@@ -113,7 +113,7 @@ plugin_unload (char *name)
   for (i = 0; i < plugin_count; i++)
     if (plugins[i] == p)
       break;
-  for (i; i < plugin_count - 1; i++)
+  for (i = i; i < plugin_count - 1; i++)
     plugins[i] = plugins[i + 1];
   plugin_count--;
   dlclose (p->location);
