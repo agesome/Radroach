@@ -1,6 +1,7 @@
 #include "plugins.h"
 #include <libguile.h>
 
+#define EVAL_NORVALUE gh_long2scm (-1)
 
 int eerror = 0;
 SCM scm, scm_result;
@@ -12,7 +13,7 @@ scm_reply (SCM str)
 {
   reply (glob_msg, scm_to_locale_string (scm_object_to_string (str, SCM_UNDEFINED)));
   
-  return SCM_BOOL_T;
+  return EVAL_NORVALUE;
 }
 
 SCM
@@ -32,8 +33,8 @@ scm_say (SCM target, SCM str)
   /* FIXME: segfaults on free */
   /* scm_dynwind_begin (0); */
   dest = scm_to_locale_string (target);
-  msg = scm_to_locale_string (str);
-  l = malloc (strlen (dest) + strlen(msg) + strlen ("PRIVMSG  :\n") + 1);
+  msg = scm_to_locale_string (scm_object_to_string (str, SCM_UNDEFINED));
+  l = malloc (strlen (dest) + strlen(msg) - 2 + strlen ("PRIVMSG  :\n") + 1);
   sprintf (l, "PRIVMSG %s :%s\n", dest, msg);
   raw (l);
   free (l);
@@ -41,7 +42,7 @@ scm_say (SCM target, SCM str)
   /* scm_dynwind_free (dest); */
   /* scm_dynwind_end (); */
 
-  return SCM_BOOL_T;
+  return EVAL_NORVALUE;
 }
 
 /* error handler */
@@ -64,11 +65,14 @@ execute (message_t *msg, command_t *cmd)
       eerror = 0;
       return;
     }
-  scm_result = scm_object_to_string (scm, SCM_UNDEFINED);
-  result = scm_to_locale_string (scm_result);
-  
-  reply (msg, result);
-  free (result);
+  if (scm != EVAL_NORVALUE)
+  	{
+		  scm_result = scm_object_to_string (scm, SCM_UNDEFINED);
+		  result = scm_to_locale_string (scm_result);
+		  
+		  reply (msg, result);
+		  free (result);
+		}
 }
 
 
