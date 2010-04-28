@@ -1,4 +1,4 @@
-CC = gcc $(DEFS) $(LIBS) $(INCLUDES) $(CFLAGS)
+CC = clang $(DEFS) $(LIBS) $(INCLUDES) $(CFLAGS)
 CFLAGS = -O1 -g -ggdb -pipe -Wall -Wextra -rdynamic
 LIBS = -lconfuse -ldl
 INCLUDES = -Isrc/ -Isrc/plugins/

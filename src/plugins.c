@@ -40,7 +40,7 @@ plugin_load (char *path)
 {
   plugin_t *p;
   void *location;
-  void (*execute) (message_t *, command_t *);
+  void (*execute) (message_t *, command_t *, uint8_t);
   int namelen;
   char *name;
 

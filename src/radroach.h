@@ -48,5 +48,5 @@ typedef struct plugin
 {
   char *name, *path;
   void *location;
-  void (*execute) (message_t *, command_t *);
+  void (*execute) (message_t *, command_t *, uint8_t);
 } plugin_t;

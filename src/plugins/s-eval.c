@@ -54,25 +54,27 @@ exec_error (message_t *msg)
 }
 
 void
-execute (message_t *msg, command_t *cmd)
+execute (message_t *msg, command_t *cmd, uint8_t is_targeted)
 {
-  glob_msg = msg;
-  
-  scm = scm_internal_catch (SCM_BOOL_T, (scm_t_catch_body) scm_c_eval_string,
-			    (void *) cmd->params, (scm_t_catch_handler) exec_error, (void *) msg);
-  if (eerror)
+  if (is_targeted || !strcmp(cmd->action, "scheme"))
     {
-      eerror = 0;
-      return;
-    }
-  if (scm != EVAL_NORVALUE)
+      glob_msg = msg;
+      scm = scm_internal_catch (SCM_BOOL_T, (scm_t_catch_body) scm_c_eval_string,
+				(void *) cmd->params, (scm_t_catch_handler) exec_error, (void *) msg);
+      if (eerror)
+	{
+	  eerror = 0;
+	  return;
+	}
+      if (scm != EVAL_NORVALUE)
   	{
-		  scm_result = scm_object_to_string (scm, SCM_UNDEFINED);
-		  result = scm_to_locale_string (scm_result);
-		  
-		  reply (msg, result);
-		  free (result);
-		}
+	  scm_result = scm_object_to_string (scm, SCM_UNDEFINED);
+	  result = scm_to_locale_string (scm_result);
+	  
+	  reply (msg, result);
+	  free (result);
+	}
+    }
 }
 
 

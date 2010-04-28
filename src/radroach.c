@@ -192,7 +192,7 @@ parsemsg (char *l)
 command_t *
 parsecmd (char *l)
 {
-  if (l[0] == settings->action_trigger && l[1] != ' ')
+  if (l[0] != ' ' && l[1] != ' ')
     {
       command_t *result = malloc (sizeof (command_t));
       result->action = &l[1];
@@ -284,28 +284,20 @@ checkrights (message_t * msg)
 void
 execute (message_t * msg, command_t * cmd)
 {
-  plugin_t *a;
-
-  a = plugin_find (cmd->action);
-  if (checkrights (msg) && a != NULL)
+  unsigned int i;
+  
+  if (checkrights (msg))
     {
       printf ("%s: Accepted command from %s (%s@%s)\n", settings->execname,
 	      msg->sender, msg->ident, msg->host);
-      printf ("%s: Executing command '%s' with parameters: '%s'\n",
-	      settings->execname, a->name, cmd->params);
-      a->execute (msg, cmd);
+      for (i = 0; i < plugin_count; i++)
+	{
+	  if (!strcmp(plugins[i]->name, cmd->action))
+	    plugins[i]->execute (msg, cmd, 1);
+	  else
+	    plugins[i]->execute (msg, cmd, 0);
+	}
     }
-  else if (a == NULL)
-    {
-      printf
-	("%s: No handler found for this command: '%s' (supplied parameters: '%s')\n",
-	 settings->execname, cmd->action, cmd->params);
-    }
-  else
-    printf
-      ("%s: Untrusted user %s (%s@%s) tried to execute command %s, ignored\n",
-       settings->execname, msg->sender, msg->ident, msg->host, cmd->action);
-
   free (cmd);
   msgfree (msg);
 }
@@ -357,7 +349,7 @@ configure (int argc, char *argv[])
   if (!parsecfg (cfile))
     {
       error (0, 0,
-	     "You did not specify nickname and host or parsing settingsiguration failed.");
+	     "You did not specify nickname and host or parsing configuration failed.");
       return 0;
     }
   return 1;
