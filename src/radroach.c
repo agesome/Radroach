@@ -93,21 +93,21 @@ sconnect (char *host)
 
   if ((sock = socket (AF_INET, SOCK_STREAM, 0)) == -1)
     {
-      error (0, 0, "Socket creation failed.\n");
+      logstr ("socket creation failed\n");
       goto err;
     }
   if ((st = getaddrinfo (host, "ircd", &hints, &server)) != 0)
     {
-      error (0, 0, "Failed to resolve hostname: %s", gai_strerror (st));
+      logstr("failed to resolve hostname\n");
       goto err;
     }
-  logstr ("Hostname resolved.\n");
+  logstr ("hostname resolved\n");
   if (connect (sock, server->ai_addr, server->ai_addrlen) == -1)
     {
-      error (0, 0, "Connection to server failed: %s", gai_strerror (errno));
+      logstr("connection to server failed");
       goto err;
     }
-  logstr ("Connected.\n");
+  logstr ("connected.\n");
   settings->sock = sock;
   freeaddrinfo (server);
 
@@ -253,7 +253,7 @@ parsecfg (char *cfile)
 
   cfg = cfg_init (opts, 0);
   status = cfg_parse (cfg, cfile);
-  printf ("%s: Trusted users are: %s\n", settings->execname, settings->trusted);
+  logstr ("trusted users are: %s\n", settings->trusted);
   /* check for necessary settings */
   if (status == CFG_SUCCESS && settings->nick != NULL && settings->host != NULL)
     return 1;
@@ -288,8 +288,7 @@ execute (message_t * msg, command_t * cmd)
   
   if (checkrights (msg))
     {
-      printf ("%s: Accepted command from %s (%s@%s)\n", settings->execname,
-	      msg->sender, msg->ident, msg->host);
+      logstr ("accepted command from %s (%s@%s)\n", msg->sender, msg->ident, msg->host);
       for (i = 0; i < plugin_count; i++)
 	{
 	  if (!strcmp(plugins[i]->name, cmd->action))
@@ -308,15 +307,12 @@ configure (int argc, char *argv[])
 {
   char *cfile = NULL;
   int opt;
-  settings = (settings_t *) malloc (sizeof (settings_t));
 
   if (argc < 2)
     {
       p_help ();
       return 0;
     }
-
-  settings->execname = argv[0];
 
   while ((opt = getopt (argc, argv, "hc:")) != -1)
     {
@@ -340,16 +336,16 @@ configure (int argc, char *argv[])
 
   if (cfile == NULL)
     {
-      error (0, 0, "No confguration file specified.");
+      logstr ("no confguration file specified");
       return 0;
     }
 
-  printf ("%s: Configuration file selected: %s\n", settings->execname, cfile);
+  logstr ("configuration file selected: %s\n", cfile);
 
   if (!parsecfg (cfile))
     {
-      error (0, 0,
-	     "You did not specify nickname and host or parsing configuration failed.");
+      logstr(
+	     "you did not specify nickname and host or parsing configuration failed\n");
       return 0;
     }
   return 1;
@@ -361,8 +357,11 @@ main (int argc, char *argv[])
   char *l = NULL;
   message_t *cmsg = NULL;
   command_t *ccmd = NULL;
+  settings_t global_settings;
 
-  printf ("%s: This is Radroach commit %s\n", argv[0], COMMIT);
+  settings = &global_settings;
+  settings->execname = argv[0];
+  logstr ("Radroach here\n");
   if (!configure (argc, argv))
     exit (EXIT_FAILURE);
   settings->action_trigger = '`';	/* default trigger char */

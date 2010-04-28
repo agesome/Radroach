@@ -40,9 +40,14 @@ reply (message_t *msg, char *reply)
 }
 
 void
-logstr (char *str)
+logstr (char *fmt, ...)
 {
-  printf ("%s: %s", settings->execname, str);
+  va_list args;
+  
+  va_start (args, fmt);
+  printf ("%s: ", settings->execname);
+  vprintf (fmt, args);
+  va_end (args);
 }
 
 /* sends raw string `str` via global socket `sock` */

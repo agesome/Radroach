@@ -18,12 +18,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <error.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <regex.h>
 #include <confuse.h>
 #include <dlfcn.h>
 
