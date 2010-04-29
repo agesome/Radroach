@@ -1,5 +1,5 @@
 CC = @CC@ $(DEFS) $(LIBS) $(INCLUDES) $(CFLAGS) @DEFS@
-CFLAGS = -Wall -Wextra -rdynamic @CFLAGS@
+CFLAGS = -Wall -rdynamic @CFLAGS@
 LIBS = @LIBS@
 INCLUDES = -Isrc/ -Isrc/plugins/
 FILES = src/radroach.c
