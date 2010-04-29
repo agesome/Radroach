@@ -228,38 +228,6 @@ p_response (char *l)
   return 0;
 }
 
-/* Parses a settingsiguration file. */
-int
-parsecfg (char *cfile)
-{
-  cfg_t *cfg = NULL;
-  int status;
-
-  cfg_opt_t opts[] = {
-    CFG_SIMPLE_STR ("nick", &settings->nick),
-    CFG_SIMPLE_STR ("name", &settings->name),
-    CFG_SIMPLE_STR ("host", &settings->host),
-    CFG_SIMPLE_STR ("trusted", &settings->trusted),
-    CFG_SIMPLE_STR ("password", &settings->password),
-    CFG_END ()
-  };
-
-  /* default values */
-  settings->nick = NULL;
-  settings->name = NULL;
-  settings->host = NULL;
-  settings->trusted = NULL;
-  settings->password = NULL;
-
-  cfg = cfg_init (opts, 0);
-  status = cfg_parse (cfg, cfile);
-  logstr ("trusted users are: %s\n", settings->trusted);
-  /* check for necessary settings */
-  if (status == CFG_SUCCESS && settings->nick != NULL && settings->host != NULL)
-    return 1;
-  return 0;
-}
-
 /* Checks if message is from a trusted source. */
 int
 checkrights (message_t * msg)
@@ -301,19 +269,27 @@ execute (message_t * msg, command_t * cmd)
   msgfree (msg);
 }
 
-/* Parses commandline arguments. */
+/* configures Radroach */
 int
 configure (int argc, char *argv[])
 {
   char *cfile = NULL;
-  int opt;
-
+  int opt, status;
+  cfg_t *cfg = NULL;
+  cfg_opt_t opts[] = {
+    CFG_SIMPLE_STR ("nick", &settings->nick),
+    CFG_SIMPLE_STR ("name", &settings->name),
+    CFG_SIMPLE_STR ("host", &settings->host),
+    CFG_SIMPLE_STR ("trusted", &settings->trusted),
+    CFG_SIMPLE_STR ("password", &settings->password),
+    CFG_END ()
+  };
+  
   if (argc < 2)
     {
       p_help ();
-      return 0;
+      return 1;
     }
-
   while ((opt = getopt (argc, argv, "hc:")) != -1)
     {
       switch (opt)
@@ -333,22 +309,30 @@ configure (int argc, char *argv[])
 	  continue;
 	}
     }
-
   if (cfile == NULL)
     {
       logstr ("no confguration file specified");
-      return 0;
+      return 1;
     }
 
-  logstr ("configuration file selected: %s\n", cfile);
+  logstr ("configuration file selected: %s; will now parse\n", cfile);
+  
+  /* default values */
+  settings->nick = NULL;
+  settings->name = NULL;
+  settings->host = NULL;
+  settings->trusted = NULL;
+  settings->password = NULL;
 
-  if (!parsecfg (cfile))
+  cfg = cfg_init (opts, 0);
+  status = cfg_parse (cfg, cfile);
+  /* check for necessary settings */
+  if (status != CFG_SUCCESS || settings->nick == NULL || settings->host == NULL)
     {
-      logstr(
-	     "you did not specify nickname and host or parsing configuration failed\n");
-      return 0;
+      logstr("parsing configuration failed\n");
+      return 1;
     }
-  return 1;
+  return 0;
 }
 
 int
@@ -362,8 +346,9 @@ main (int argc, char *argv[])
   settings = &global_settings;
   settings->execname = argv[0];
   logstr ("Radroach here\n");
-  if (!configure (argc, argv))
+  if (configure (argc, argv))
     exit (EXIT_FAILURE);
+  logstr ("trusted users are: %s\n", settings->trusted);
   settings->action_trigger = '`';	/* default trigger char */
   plugins_init ("./plugins/");
   sconnect (settings->host);
