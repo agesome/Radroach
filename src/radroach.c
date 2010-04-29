@@ -18,7 +18,7 @@
 #include <plugins.c>
 #include <util.c>
 
-#define BUFSZ 10
+#define BUFSZ 128
 
 char inbuf[BUFSZ];
 /* Refers to global configuration structure. */
@@ -154,7 +154,7 @@ message_t *
 parsemsg (char *l)
 {
   /* we only want to parse private messages, which may contain instructions */
-  if (strstr (l, "PRIVMSG") != NULL && l[0] == ':')
+  if (strstr (l, " PRIVMSG ") != NULL && l[0] == ':')
     {
       message_t *result = malloc (sizeof (message_t));
       result->raw = l;
@@ -259,6 +259,7 @@ execute (message_t * msg, command_t * cmd)
       logstr ("accepted command from %s (%s@%s)\n", msg->sender, msg->ident, msg->host);
       for (i = 0; i < plugin_count; i++)
 	{
+	  logstr ("executing plugin %s\n", plugins[i]->name);
 	  if (!strcmp(plugins[i]->name, cmd->action))
 	    plugins[i]->execute (msg, cmd, 1);
 	  else
