@@ -1,4 +1,4 @@
-AC_INIT(radroach, version-devel)
+AC_INIT(Radroach, devel)
 AC_PROG_CC
 AC_LANG(C)
 AC_CHECK_HEADERS(stdio.h)
@@ -14,4 +14,6 @@ AC_CHECK_HEADERS(netdb.h)
 AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADERS(confuse.h)
 AC_CHECK_HEADERS(dlfcn.h)
+AC_SEARCH_LIBS(cfg_init, confuse)
+AC_SEARCH_LIBS(dlopen, dl)
 AC_OUTPUT(Makefile)

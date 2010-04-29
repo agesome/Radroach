@@ -1,6 +1,6 @@
-CC = @CC@ $(DEFS) $(LIBS) $(INCLUDES) $(CFLAGS)
-CFLAGS = -O1 -g -ggdb -pipe -Wall -Wextra -rdynamic
-LIBS = -lconfuse -ldl
+CC = @CC@ $(DEFS) $(LIBS) $(INCLUDES) $(CFLAGS) @DEFS@
+CFLAGS = -Wall -Wextra -rdynamic @CFLAGS@
+LIBS = @LIBS@
 INCLUDES = -Isrc/ -Isrc/plugins/
 FILES = src/radroach.c
 
