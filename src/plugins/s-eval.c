@@ -1,7 +1,7 @@
 #include "plugins.h"
 #include <libguile.h>
 
-#define EVAL_NORVALUE gh_long2scm (-1)
+#define EVAL_NORVALUE scm_from_long (-1)
 
 int eerror = 0;
 SCM scm, scm_result;
@@ -85,9 +85,9 @@ s_eval_initialize (void)
 
   scm_primitive_load (scm_from_locale_string ("./src/plugins/s-eval.scm"));
 
-  gh_new_procedure ("reply", scm_reply, 1, 0, 0);
-  gh_new_procedure ("say", scm_say, 2, 0, 0);
-  gh_new_procedure ("raw", scm_raw, 1, 0, 0);  
+  scm_c_define_gsubr ("reply", 1, 0, 0, scm_reply);
+  scm_c_define_gsubr ("say", 2, 0, 0, scm_say);
+  scm_c_define_gsubr ("raw", 1, 0, 0, scm_raw);  
 }
 
 __attribute__((destructor)) void
