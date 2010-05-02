@@ -4,6 +4,5 @@ Basic support for binary plugins is implemented.
 Radroach is licensed under the GNU GPL, see LICENSE file for details.
 
 COMPILING:
-% autoconf configure.ac > configure
-% configure
+% ./configure
 % make
