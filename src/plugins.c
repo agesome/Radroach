@@ -67,7 +67,7 @@ plugin_load (char *path)
   p->execute = execute;
   p->name = name;
   p->path = path;
-  printf ("%s: Loaded plugin '%s'\n", settings->execname, p->name);
+  logstr ("loaded plugin '%s'\n", p->name);
   
   return 1;
 

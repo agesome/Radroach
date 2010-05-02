@@ -15,8 +15,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <radroach.h>
-#include <plugins.c>
 #include <util.c>
+#include <plugins.c>
 
 #define BUFSZ 128
 

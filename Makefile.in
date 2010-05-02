@@ -1,18 +1,24 @@
-CC = @CC@ $(DEFS) $(LIBS) $(INCLUDES) $(CFLAGS) @DEFS@
+CC = @CC@ @LIBS@ $(INCLUDES) $(CFLAGS) @DEFS@
 CFLAGS = -Wall -rdynamic @CFLAGS@
-LIBS = @LIBS@
-INCLUDES = -Isrc/ -Isrc/plugins/
+INCLUDES = -Isrc/ -Isrc/plugins/ 
 FILES = src/radroach.c
+PLUGINS = `echo src/plugins/*.c | sed 's/\.c//g' | sed 's/src\/plugins\///g'`
 
-all: clean radroach
+all: radroach plugins
 
-radroach: radroach.o
+radroach: $(FILES)
+	@echo "Compiling Radroach"
+	@$(CC) $(FILES) -o $@
 
-radroach.o: $(FILES)
-	$(CC) $(FILES) -c
+plugins: plugins.so
 
-radroach: $(radroach)
-	$(CC) -o $@ *.o
+plugins.so:
+	@echo "Compiling Plugins"
+	@for file in $(PLUGINS); do \
+	$(CC) -rdynamic -lguile -fPIC -shared src/plugins/$$file.c -o plugins/$$file.so; \
+	done
 
 clean:
-	rm -f *.o
+	rm -f radroach plugins/*
+
+.PHONY: all

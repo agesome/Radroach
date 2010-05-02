@@ -15,6 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 void raw (char *str);
+extern settings_t *settings;
 
 /* reply either to a channel or to a person */
 void
