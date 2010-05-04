@@ -20,9 +20,9 @@ SCM
 scm_raw (SCM str)
 {
   raw (scm_to_locale_string (str));
-  raw ("\n");
+  /* raw ("\n"); */
   
-  return SCM_BOOL_T;
+  /* return SCM_BOOL_T; */
 }
 
 SCM

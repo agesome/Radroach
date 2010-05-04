@@ -1,7 +1,10 @@
 #include "plugins.h"
 
 void
-execute (message_t * msg, command_t * cmd)
+execute (message_t * msg, command_t * cmd, uint8_t is_targeted)
 {
-  reply (msg, cmd->params);
+  if (is_targeted)
+    {
+      reply (msg, cmd->params);
+    }
 }

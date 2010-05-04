@@ -140,9 +140,9 @@ setup (void)
   else
     {
       l =
-	malloc (strlen ("USER  localhost  :CBot - a bot in C, by age\n") +
+	malloc (strlen ("USER  localhost  :Radroach\n") +
 		strlen (settings->nick) + strlen (settings->host) + 1);
-      sprintf (l, "USER %s localhost %s :CBot - a bot in C, by age\n",
+      sprintf (l, "USER %s localhost %s :Radroach\n",
 	       settings->nick, settings->host);
       raw (l);
     }
