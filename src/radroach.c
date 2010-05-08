@@ -39,7 +39,6 @@ sogetline ()
     return NULL;
   strncpy (line, buffer, len);
   line[len] = '\0';
-  printf ("%s\n", line);
   return line;
 }
 
