@@ -39,7 +39,7 @@ typedef struct command
 typedef struct settings
 {
   char *nick, *name, *host, *trusted, *password, action_trigger, *execname;
-  int sock;
+  FILE *socket;
 } settings_t;
 
 typedef struct plugin

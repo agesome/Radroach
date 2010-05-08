@@ -51,12 +51,11 @@ logstr (char *fmt, ...)
   va_end (args);
 }
 
-/* sends raw string `str` via global socket `sock` */
 void
 raw (char *str)
 {
   logstr (str);
-  write (settings->sock, str, strlen (str));
+  fprintf (settings->socket, str);
 }
 
 /*  Print short usage instructions. */

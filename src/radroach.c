@@ -18,56 +18,29 @@
 #include <util.c>
 #include <plugins.c>
 
-#define BUFSZ 128
-
-char inbuf[BUFSZ];
 /* Refers to global configuration structure. */
 settings_t *settings = NULL;
-
 void setup (void);
 
 /* Returns a line from irc server. */
-/* FIXME: store everything in a buffer, give out lines */
 char *
-sogetline (int s)
+sogetline ()
 {
-  char c = 0, *buf, *rebuf;
-  int r, i = 0, bsz = BUFSZ;
+  /* irc RFC specifies maximum message length of 512 chars, plus one for \0 */
+  char buffer[513], *line;
+  size_t len;
 
-  buf = malloc (BUFSZ);
-  while ((r = read (s, &c, 1)) != -1)
-    {
-      /* ordinary read */
-      if (r)
-	buf[i++] = c;
-      /* all done, reallocate and return */
-      /* string is less than our buffer, reallocate. */
-      if (c == '\n' && i < bsz)
-	{
-	  buf[i] = '\0';
-	  rebuf = malloc (strlen (buf) + 1);
-	  strcpy (rebuf, buf);
-	  free (buf);
-	  return rebuf;
-	}
-      else if (c == '\n' && i == bsz)
-	{
-	  buf[i - 1] = '\0';
-	  return buf;
-	}
-      /* we've reached buffer limit, reallocate with more space */
-      if (i >= bsz)
-	{
-	  rebuf = malloc (i + BUFSZ);
-	  memcpy (rebuf, buf, i);
-	  free (buf);
-	  buf = rebuf;
-	  bsz += BUFSZ;
-	}
-    }
-  /* something failed and we did not return a sting earlier */
-  return NULL;
-
+  if (feof (settings->socket) || ferror (settings->socket))
+    return NULL;
+  fgets (buffer, 513, settings->socket);
+  len = strlen (buffer) - 1;
+  line = malloc (len);
+  if (line == NULL)
+    return NULL;
+  strncpy (line, buffer, len);
+  line[len] = '\0';
+  printf ("%s\n", line);
+  return line;
 }
 
 /* free(), but for message struct. */
@@ -108,13 +81,9 @@ sconnect (char *host)
       goto err;
     }
   logstr ("connected.\n");
-  settings->sock = sock;
+  settings->socket = fdopen (sock, "r+");
   freeaddrinfo (server);
 
-  /* inbuf is not used yet, don't scream. */
-  sprintf (inbuf, "NICK %s\n", settings->nick);
-  raw (inbuf);
-  setup ();
   return;
 
 err:
@@ -128,6 +97,12 @@ void
 setup (void)
 {
   char *l = NULL;
+
+  l = malloc (strlen ("NICK \n"));
+  sprintf (l, "NICK %s\n", settings->nick);
+  raw (l);
+  free (l);
+  
   if (settings->name)
     {
       l =
@@ -353,8 +328,9 @@ main (int argc, char *argv[])
   settings->action_trigger = '`';	/* default trigger char */
   plugins_init ("./plugins/");
   sconnect (settings->host);
+  setup ();
 
-  while ((l = sogetline (settings->sock)) != NULL)
+  while ((l = sogetline ()) != NULL)
     {
       if (p_response (l))
 	continue;
