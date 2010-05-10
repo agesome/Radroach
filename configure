@@ -2539,9 +2539,9 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing cfg_init" >&5
-$as_echo_n "checking for library containing cfg_init... " >&6; }
-if test "${ac_cv_search_cfg_init+set}" = set; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing cfg_init, cfg_parse" >&5
+$as_echo_n "checking for library containing cfg_init, cfg_parse... " >&6; }
+if test "${ac_cv_search_cfg_init__cfg_parse+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
   ac_func_search_save_LIBS=$LIBS
@@ -2554,11 +2554,11 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char cfg_init ();
+char cfg_init, cfg_parse ();
 int
 main ()
 {
-return cfg_init ();
+return cfg_init, cfg_parse ();
   ;
   return 0;
 }
@@ -2571,25 +2571,25 @@ for ac_lib in '' confuse; do
     LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
   fi
   if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_search_cfg_init=$ac_res
+  ac_cv_search_cfg_init__cfg_parse=$ac_res
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext
-  if test "${ac_cv_search_cfg_init+set}" = set; then :
+  if test "${ac_cv_search_cfg_init__cfg_parse+set}" = set; then :
   break
 fi
 done
-if test "${ac_cv_search_cfg_init+set}" = set; then :
+if test "${ac_cv_search_cfg_init__cfg_parse+set}" = set; then :
 
 else
-  ac_cv_search_cfg_init=no
+  ac_cv_search_cfg_init__cfg_parse=no
 fi
 rm conftest.$ac_ext
 LIBS=$ac_func_search_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_cfg_init" >&5
-$as_echo "$ac_cv_search_cfg_init" >&6; }
-ac_res=$ac_cv_search_cfg_init
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_cfg_init__cfg_parse" >&5
+$as_echo "$ac_cv_search_cfg_init__cfg_parse" >&6; }
+ac_res=$ac_cv_search_cfg_init__cfg_parse
 if test "$ac_res" != no; then :
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
