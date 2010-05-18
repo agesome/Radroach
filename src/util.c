@@ -60,7 +60,7 @@ raw (char *str)
 
 /*  Print short usage instructions. */
 void
-p_help (void)
+print_usage (void)
 {
-  printf ("Usage: %s [-h] -c settingsile\n", settings->execname);
+  logstr ("usage: %s [-h] -c <file>\n", settings->execname);
 }

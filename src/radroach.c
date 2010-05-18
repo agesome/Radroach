@@ -15,12 +15,28 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <radroach.h>
-#include <util.c>
-#include <plugins.c>
-
 /* Refers to global configuration structure. */
 settings_t *settings = NULL;
 void setup (void);
+
+void *
+malloc_wrapper (size_t size)
+{
+  void *mem;
+
+  mem = malloc (size);
+  if (mem == NULL)
+    {
+      fprintf (stderr, "%s: failed to allocate %d bytes, exiting",
+          settings->execname, (unsigned int) size);
+      exit (EXIT_FAILURE);
+    }
+  return mem;
+}
+
+#define malloc(x) malloc_wrapper(x)
+#include <util.c>
+#include <plugins.c>
 
 /* Returns a line from irc server. */
 char *
@@ -262,7 +278,7 @@ configure (int argc, char *argv[])
   
   if (argc < 2)
     {
-      p_help ();
+      print_usage ();
       return 1;
     }
   while ((opt = getopt (argc, argv, "hc:")) != -1)
@@ -271,7 +287,7 @@ configure (int argc, char *argv[])
 	{
 	case 'h':
 	  {
-	    p_help ();
+	    print_usage ();
 	    continue;
 	  }
 	case 'c':
