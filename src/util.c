@@ -46,7 +46,7 @@ logstr (char *fmt, ...)
   va_list args;
   
   va_start (args, fmt);
-  printf ("%s: ", settings->execname);
+  /* printf ("%s: ", settings->execname); */
   vprintf (fmt, args);
   va_end (args);
 }

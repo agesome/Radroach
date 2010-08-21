@@ -84,8 +84,6 @@ plugins_init (char *plugindir)
   char *p;
   int pathlen;
 
-  /* memset (plugins[0], 0, MAX_PLUGINS); */
-  
   pd = opendir (plugindir);
   while ( (file = readdir (pd)) )
     {

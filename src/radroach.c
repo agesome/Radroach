@@ -18,6 +18,7 @@
 /* Refers to global configuration structure. */
 settings_t *settings = NULL;
 void setup (void);
+void logstr (char *, ...);
 
 void *
 malloc_wrapper (size_t size)
@@ -31,10 +32,21 @@ malloc_wrapper (size_t size)
           settings->execname, (unsigned int) size);
       exit (EXIT_FAILURE);
     }
+  if (DEBUG)
+    logstr ("allocated %d bytes at %p\n", size, mem);
   return mem;
 }
 
+void
+free_wrapper (void *mem)
+{
+  if (DEBUG)
+    logstr ("freeing memory at %p\n", mem);
+  free (mem);
+}
+
 #define malloc(x) malloc_wrapper(x)
+#define free(x) free_wrapper(x)
 #include <util.c>
 #include <plugins.c>
 
@@ -49,12 +61,10 @@ sogetline ()
   if (feof (settings->socket) || ferror (settings->socket))
     return NULL;
   fgets (buffer, 513, settings->socket);
-  len = strlen (buffer) - 1;
+  len = strlen (buffer);
   line = malloc (len);
-  if (line == NULL)
-    return NULL;
   strncpy (line, buffer, len);
-  line[len] = '\0';
+  line[len - 1] = '\0';
   return line;
 }
 
@@ -79,28 +89,31 @@ sconnect (char *host)
   hints.ai_flags = 0;
   hints.ai_protocol = 0;
 
-  if ((sock = socket (AF_INET, SOCK_STREAM, 0)) == -1)
+  sock = socket (AF_INET, SOCK_STREAM, 0);
+  if (sock == -1)
     {
       logstr ("socket creation failed\n");
       goto err;
     }
-  if ((st = getaddrinfo (host, "ircd", &hints, &server)) != 0)
+  st = getaddrinfo (host, "6667", &hints, &server);
+  if (st != 0)
     {
       logstr("failed to resolve hostname\n");
       goto err;
     }
   logstr ("hostname resolved\n");
-  if (connect (sock, server->ai_addr, server->ai_addrlen) == -1)
+  st = connect (sock, server->ai_addr, server->ai_addrlen);
+  if (st == -1)
     {
       logstr("connection to server failed");
       goto err;
     }
-  logstr ("connected.\n");
+  logstr ("connected\n");
   settings->socket = fdopen (sock, "r+");
   freeaddrinfo (server);
-
+  
   return;
-
+  
 err:
   if (server)
     freeaddrinfo (server);
@@ -113,7 +126,7 @@ setup (void)
 {
   char *l = NULL;
 
-  l = malloc (strlen ("NICK \n"));
+  l = malloc (strlen ("NICK \n") + strlen (settings->nick) + 1);
   sprintf (l, "NICK %s\n", settings->nick);
   raw (l);
   free (l);
@@ -210,6 +223,7 @@ p_response (char *l)
 {
   if (strstr (l, "PING ") != NULL)
     {
+      logstr ("PING\n");
       memcpy (l, "PONG", 4);
       raw (l);
       free (l);
@@ -246,12 +260,15 @@ execute (message_t * msg, command_t * cmd)
   
   if (checkrights (msg))
     {
-      logstr ("accepted command from %s (%s@%s)\n", msg->sender, msg->ident, msg->host);
+      logstr ("accepted command %s from %s (%s@%s)\n", cmd->action, msg->sender, msg->ident, msg->host);
       for (i = 0; i < plugin_count; i++)
 	{
-	  logstr ("executing plugin %s\n", plugins[i]->name);
+          /* bad performance impact. meh. */
 	  if (!strcmp(plugins[i]->name, cmd->action))
+          {
+            logstr ("plugin %s matched\n", plugins[i]->name);
 	    plugins[i]->execute (msg, cmd, 1);
+          }
 	  else
 	    plugins[i]->execute (msg, cmd, 0);
 	}
@@ -302,7 +319,7 @@ configure (int argc, char *argv[])
     }
   if (cfile == NULL)
     {
-      logstr ("no confguration file specified");
+      logstr ("no confguration file specified\n");
       return 1;
     }
 
@@ -347,15 +364,18 @@ main (int argc, char *argv[])
 
   while ((l = sogetline ()) != NULL)
     {
+      logstr ("LOOP\n");
       if (p_response (l))
 	continue;
       cmsg = parsemsg (l);
       if (cmsg != NULL)
-	{
-	  ccmd = parsecmd (cmsg->msg);
-	  if (ccmd != NULL)
-	    execute (cmsg, ccmd);
-	}
+        {
+          ccmd = parsecmd (cmsg->msg);
+          if (ccmd != NULL)
+            execute (cmsg, ccmd);
+        }
+      else
+	free (l);
     }
   return EXIT_SUCCESS;
 }
