@@ -24,6 +24,13 @@
 #include <netdb.h>
 #include <confuse.h>
 #include <dlfcn.h>
+#ifdef HAVE_STDBOOL_H
+# include <stdbool.h>
+#else
+# define bool signed char
+# define false 0
+# define true 1
+#endif
 
 /* some type definitions */
 typedef struct message
@@ -40,6 +47,7 @@ typedef struct settings
 {
   char *nick, *name, *host, *trusted, *password, action_trigger, *execname;
   FILE *socket;
+  bool verbose;
 } settings_t;
 
 typedef struct plugin

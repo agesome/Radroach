@@ -65,6 +65,8 @@ sogetline ()
   line = malloc (len);
   strncpy (line, buffer, len);
   line[len - 1] = '\0';
+  if (settings->verbose)
+    logstr ("-> %s\n", line);
   return line;
 }
 
@@ -297,7 +299,7 @@ configure (int argc, char *argv[])
       print_usage ();
       return 1;
     }
-  while ((opt = getopt (argc, argv, "hc:")) != -1)
+  while ((opt = getopt (argc, argv, "vhc:")) != -1)
     {
       switch (opt)
 	{
@@ -310,6 +312,10 @@ configure (int argc, char *argv[])
 	  {
 	    cfile = optarg;
 	    continue;
+	  }
+	case 'v':
+	  {
+	    settings->verbose = true;
 	  }
 	case '?':
 	default:
@@ -352,11 +358,13 @@ main (int argc, char *argv[])
 
   settings = &global_settings;
   settings->execname = argv[0];
+  settings->action_trigger = '`';	/* default trigger char */
+  settings->verbose = false;
+  
   logstr ("Radroach here\n");
   if (configure (argc, argv))
     exit (EXIT_FAILURE);
   logstr ("trusted users are: %s\n", settings->trusted);
-  settings->action_trigger = '`';	/* default trigger char */
   plugins_init ("./plugins/");
   sconnect (settings->host);
   setup ();

@@ -53,7 +53,8 @@ logstr (char *fmt, ...)
 void
 raw (char *str)
 {
-  logstr (str);
+  if (settings->verbose)
+    logstr ("<- %s", str);
   fprintf (settings->socket, str);
 }
 
@@ -61,5 +62,7 @@ raw (char *str)
 void
 print_usage (void)
 {
-  logstr ("usage: %s [-h] -c <file>\n", settings->execname);
+  logstr ("usage: %s [-h] [-v] -c <file>\n", settings->execname);
+  logstr ("\t -h\t print this message\n");
+  logstr ("\t -v\t print all server traffic\n");
 }
