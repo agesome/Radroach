@@ -223,7 +223,6 @@ p_response (char *l)
 {
   if (strstr (l, "PING ") != NULL)
     {
-      logstr ("PING\n");
       memcpy (l, "PONG", 4);
       raw (l);
       free (l);
@@ -364,7 +363,6 @@ main (int argc, char *argv[])
 
   while ((l = sogetline ()) != NULL)
     {
-      logstr ("LOOP\n");
       if (p_response (l))
 	continue;
       cmsg = parsemsg (l);

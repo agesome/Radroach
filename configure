@@ -2724,6 +2724,8 @@ fi
 # Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then :
   enableval=$enable_debug; CFLAGS="$CFLAGS -O0 -g -DDEBUG=1"
+else
+  CFLAGS="$CFLAGS -DDEBUG=0"
 fi
 
 ac_config_files="$ac_config_files Makefile"
