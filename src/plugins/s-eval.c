@@ -47,10 +47,22 @@ scm_say (SCM target, SCM str)
 
 /* error handler */
 void
-exec_error (message_t *msg)
-{  
+exec_error (message_t *msg, SCM key, SCM args)
+{
+  char *message, *args_message;
+  SCM error_args;
+  size_t len;
+  
   eerror = 1;
-  reply (msg, "Error :(");
+  scm_result = scm_object_to_string (key, SCM_UNDEFINED);
+  result = scm_to_locale_string (scm_result);
+  error_args = scm_object_to_string (args, SCM_UNDEFINED);
+  args_message = scm_to_locale_string (error_args);
+  len = strlen (result) + strlen (args_message) + 5;
+  message = malloc (len);
+  snprintf (message, len, "%s: %s\n", result, args_message);
+  reply (msg, message);
+  free (message);
 }
 
 void
