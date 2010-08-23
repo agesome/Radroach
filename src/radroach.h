@@ -49,6 +49,7 @@ typedef struct settings
   char *nick, *name, *host, *trusted, *password, action_trigger, *execname;
   FILE *socket;
   bool verbose;
+  char *aj_list;		/* autojoin list */
 } settings_t;
 
 typedef struct plugin

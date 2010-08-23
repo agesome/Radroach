@@ -78,6 +78,20 @@ msgfree (message_t * msg)
   free (msg);
 }
 
+/* Checks if there's a ping request, replies if there is. Additionally calls setup(). */
+int
+p_response (char *l)
+{
+  if (strstr (l, "PING ") != NULL)
+    {
+      memcpy (l, "PONG", 4);
+      raw (l);
+      free (l);
+      return 1;
+    }
+  return 0;
+}
+
 /* Perform connection to server. */
 void
 server_connect (char *host)
@@ -107,7 +121,7 @@ server_connect (char *host)
   st = connect (sock, server->ai_addr, server->ai_addrlen);
   if (st == -1)
     {
-      logstr("connection to server failed");
+      logstr("connection to server failed\n");
       goto err;
     }
   logstr ("connected\n");
@@ -152,6 +166,21 @@ setup (void)
       raw (l);
     }
   free (l);
+  while (!p_response (sogetline ())); /* wait for first ping before attempting to join */
+  if (settings->aj_list != NULL)
+    {
+      char *msg, *chan;
+      size_t mlen;
+
+      for (chan = strtok (settings->aj_list, " "); chan != NULL; chan = strtok (NULL, " "))
+  	{
+  	  mlen = strlen ("JOIN \n") + strlen (chan) + 1;
+  	  msg = malloc (mlen);
+  	  snprintf (msg, mlen, "JOIN %s\n", chan);
+  	  raw (msg);
+  	  free (msg);
+  	}
+    }
 }
 
 /*  Parses a string, returns message containing that string's data. */
@@ -219,20 +248,6 @@ parsecmd (char *l)
   return NULL;
 }
 
-/* Checks if there's a ping request, replies if there is. Additionally calls setup(). */
-int
-p_response (char *l)
-{
-  if (strstr (l, "PING ") != NULL)
-    {
-      memcpy (l, "PONG", 4);
-      raw (l);
-      free (l);
-      return 1;
-    }
-  return 0;
-}
-
 /* Checks if message is from a trusted source. */
 int
 checkrights (message_t * msg)
@@ -291,6 +306,7 @@ configure (int argc, char *argv[])
     CFG_SIMPLE_STR ("host", &settings->host),
     CFG_SIMPLE_STR ("trusted", &settings->trusted),
     CFG_SIMPLE_STR ("password", &settings->password),
+    CFG_SIMPLE_STR ("join", &settings->aj_list),
     CFG_END ()
   };
   
@@ -336,6 +352,7 @@ configure (int argc, char *argv[])
   settings->host = NULL;
   settings->trusted = NULL;
   settings->password = NULL;
+  settings->aj_list = NULL;
 
   cfg = cfg_init (opts, 0);
   status = cfg_parse (cfg, cfile);
@@ -423,6 +440,8 @@ main (int argc, char *argv[])
   if (configure (argc, argv))
     exit (EXIT_FAILURE);
   logstr ("trusted users are: %s\n", settings->trusted);
+  if (settings->aj_list)
+    logstr ("channels to join: %s\n", settings->aj_list);
   server_connect (settings->host);
   setup ();
   plugins_load ("./plugins/");
