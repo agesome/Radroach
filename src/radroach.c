@@ -80,7 +80,7 @@ msgfree (message_t * msg)
 
 /* Perform connection to server. */
 void
-sconnect (char *host)
+server_connect (char *host)
 {
   struct addrinfo *server = NULL, hints;
   int st, sock;
@@ -348,6 +348,63 @@ configure (int argc, char *argv[])
   return 0;
 }
 
+void
+sighandler (int sig)
+{
+  switch (sig)
+    {
+    case SIGABRT:
+      logstr ("\tSIGABRT\n");
+      break;
+    case SIGBUS:
+      logstr ("\tSIGBUS\n");
+      break;
+    case SIGHUP:
+      logstr ("\tSIGHUP\n");
+      break;
+    case SIGINT:
+      logstr ("\tSIGINT\n");
+      break;
+    case SIGKILL:
+      logstr ("\tSIGKILL\n");
+      break;
+    case SIGQUIT:
+      logstr ("\tSIGQUIT\n");
+      break;
+    case SIGTERM:
+      logstr ("\tSIGTERM\n");
+      break;
+    case 0:
+      logstr ("exiting, goodbye\n");
+      break;
+    default:
+      break;
+    }
+
+  if (settings->socket)
+    {
+      fclose (settings->socket);
+      settings->socket = NULL;
+    }
+  plugins_unload ();
+  exit (EXIT_SUCCESS);
+}
+
+void
+register_signals (void)
+{
+  struct sigaction action;
+
+  action.sa_handler = sighandler;
+  sigemptyset (&action.sa_mask);
+  action.sa_flags = 0;
+  
+  sigaction (SIGINT, &action, NULL);
+  sigaction (SIGTERM, &action, NULL);
+  
+  atexit ((void (*)(void)) sighandler);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -362,12 +419,13 @@ main (int argc, char *argv[])
   settings->verbose = false;
   
   logstr ("Radroach here\n");
+  register_signals ();
   if (configure (argc, argv))
     exit (EXIT_FAILURE);
   logstr ("trusted users are: %s\n", settings->trusted);
-  plugins_init ("./plugins/");
-  sconnect (settings->host);
+  server_connect (settings->host);
   setup ();
+  plugins_load ("./plugins/");
 
   while ((l = sogetline ()) != NULL)
     {

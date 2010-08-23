@@ -76,8 +76,29 @@ plugin_load (char *path)
   return 0;    
 }
 
+int
+plugin_unload (char *name)
+{
+  plugin_t *p;
+  unsigned int i;
+
+  p = plugin_find (name);
+  if (p == NULL)
+    return 0;
+  for (i = 0; i < plugin_count; i++)
+    if (plugins[i] == p)
+      break;
+  for (i = i; i < plugin_count - 1; i++)
+    plugins[i] = plugins[i + 1];
+  plugin_count--;
+  dlclose (p->location);
+  free (p);
+  logstr ("unloaded plugin '%s'\n", name);
+  return 1;
+}
+
 void
-plugins_init (char *plugindir)
+plugins_load (char *plugindir)
 {
   DIR *pd;
   struct dirent *file;
@@ -99,24 +120,12 @@ plugins_init (char *plugindir)
     }  
 }
 
-int
-plugin_unload (char *name)
+/* unload all loaded plugins */
+void
+plugins_unload (void)
 {
-  plugin_t *p;
-  unsigned int i;
-
-  p = plugin_find (name);
-  if (p == NULL)
-    return 0;
-  for (i = 0; i < plugin_count; i++)
-    if (plugins[i] == p)
-      break;
-  for (i = i; i < plugin_count - 1; i++)
-    plugins[i] = plugins[i + 1];
-  plugin_count--;
-  dlclose (p->location);
-  free (p);
-  printf ("%s: Unloaded plugin '%s'\n", settings->execname, name);
-  return 1;
+  while (plugin_count)
+    {
+      plugin_unload (plugins[0]->name);
+    }
 }
-

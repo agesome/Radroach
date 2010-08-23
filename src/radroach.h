@@ -24,6 +24,7 @@
 #include <netdb.h>
 #include <confuse.h>
 #include <dlfcn.h>
+#include <signal.h>
 #ifdef HAVE_STDBOOL_H
 # include <stdbool.h>
 #else
