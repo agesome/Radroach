@@ -41,7 +41,7 @@ typedef struct message
 
 typedef struct command
 {
-  char *action, *params;
+  char *action, *params, *raw;
 } command_t;
 
 typedef struct settings

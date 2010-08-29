@@ -224,19 +224,21 @@ parsemsg (char *l)
 
 /* Parses a string, returns command containing string's data. */
 command_t *
-parsecmd (char *l)
+parsecmd (const char *l)
 {
   if (l[0] != ' ' && l[1] != ' ')
     {
       command_t *result = malloc (sizeof (command_t));
-      result->action = &l[1];
+      char *raw = result->raw = strdup (l);
+      result->action = &raw[1];
+      
 
-      l = strchr (l, ' ');	/* if there is a space after command name, we may expect parameters */
-      if (l != NULL)
+      raw = strchr (raw, ' ');	/* if there is a space after command name, we may expect parameters */
+      if (raw != NULL)
 	{
-	  *l = '\0';
-	  l++;
-	  result->params = (*l != '\0') ? l : NULL;
+	  *raw = '\0';
+	  raw++;
+	  result->params = (*raw != '\0') ? raw : NULL;
 	  return result;
 	}
       else			/* there are no parameters at all */
@@ -289,6 +291,7 @@ execute (message_t * msg, command_t * cmd)
 	    plugins[i]->execute (msg, cmd, 0);
 	}
     }
+  free (cmd->raw);
   free (cmd);
   msgfree (msg);
 }
