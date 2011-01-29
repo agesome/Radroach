@@ -24,12 +24,12 @@ void *
 malloc_wrapper (size_t size)
 {
   void *mem;
-
+  
   mem = malloc (size);
   if (mem == NULL)
     {
       fprintf (stderr, "%s: failed to allocate %d bytes, exiting",
-          settings->execname, (unsigned int) size);
+	       settings->execname, (unsigned int) size);
       exit (EXIT_FAILURE);
     }
   if (DEBUG)
@@ -100,9 +100,9 @@ server_connect (char *host)
   int st, sock;
 
   memset (&hints, 0, sizeof (struct addrinfo));
-  hints.ai_family = AF_UNSPEC;
+  hints.ai_family   = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = 0;
+  hints.ai_flags    = 0;
   hints.ai_protocol = 0;
 
   sock = socket (AF_INET, SOCK_STREAM, 0);
@@ -130,7 +130,7 @@ server_connect (char *host)
   
   return;
   
-err:
+ err:
   if (server)
     freeaddrinfo (server);
   exit (EXIT_FAILURE);
@@ -141,7 +141,7 @@ void
 setup (void)
 {
   char *l = NULL;
-
+  
   l = malloc (strlen ("NICK \n") + strlen (settings->nick) + 1);
   sprintf (l, "NICK %s\n", settings->nick);
   raw (l);
@@ -192,7 +192,7 @@ parsemsg (char *l)
     {
       message_t *result = malloc (sizeof (message_t));
       result->raw = l;
-
+      
       result->sender = &l[1];
       l = strchr (l, '!') + 1;
       *(l - 1) = '\0';
@@ -350,13 +350,13 @@ configure (int argc, char *argv[])
   logstr ("configuration file selected: %s; will now parse\n", cfile);
   
   /* default values */
-  settings->nick = NULL;
-  settings->name = NULL;
-  settings->host = NULL;
-  settings->trusted = NULL;
+  settings->nick     = NULL;
+  settings->name     = NULL;
+  settings->host     = NULL;
+  settings->trusted  = NULL;
   settings->password = NULL;
-  settings->aj_list = NULL;
-
+  settings->aj_list  = NULL;
+  
   cfg = cfg_init (opts, 0);
   status = cfg_parse (cfg, cfile);
   /* check for necessary settings */
@@ -416,9 +416,9 @@ register_signals (void)
   struct sigaction action;
 
   action.sa_handler = sighandler;
-  sigemptyset (&action.sa_mask);
-  action.sa_flags = 0;
-  
+  action.sa_flags   = 0;
+
+  sigemptyset (&action.sa_mask);  
   sigaction (SIGINT, &action, NULL);
   sigaction (SIGTERM, &action, NULL);
   
@@ -428,15 +428,15 @@ register_signals (void)
 int
 main (int argc, char *argv[])
 {
-  char *l = NULL;
-  message_t *cmsg = NULL;
-  command_t *ccmd = NULL;
-  settings_t global_settings;
+  char		*l    = NULL;
+  message_t	*cmsg = NULL;
+  command_t	*ccmd = NULL;
+  settings_t	 global_settings;
 
-  settings = &global_settings;
-  settings->execname = argv[0];
+  settings		   = &global_settings;
+  settings->execname	   = argv[0];
   settings->action_trigger = '`';	/* default trigger char */
-  settings->verbose = false;
+  settings->verbose	   = false;
   
   logstr ("Radroach here\n");
   register_signals ();

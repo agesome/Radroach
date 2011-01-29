@@ -129,3 +129,16 @@ plugins_unload (void)
       plugin_unload (plugins[0]->name);
     }
 }
+
+/* unload-load all except for rl-plugins */
+void
+plugins_reload (void)
+{
+  logstr ("RELOADING PLUGINS\n");
+  while (plugin_count > 1)
+    {
+      if (strstr (plugins[0]->name, "rl-plugins") == NULL)
+	plugin_unload (plugins[0]->name);
+    }
+  plugins_load ("./plugins/");
+}
