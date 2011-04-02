@@ -407,7 +407,6 @@ sighandler (int sig)
       settings->socket = NULL;
     }
   plugins_unload ();
-  exit (EXIT_SUCCESS);
 }
 
 void
@@ -437,6 +436,7 @@ main (int argc, char *argv[])
   settings->execname	   = argv[0];
   settings->action_trigger = '`';	/* default trigger char */
   settings->verbose	   = false;
+  settings->socket	   = NULL;
   
   logstr ("Radroach here\n");
   register_signals ();
